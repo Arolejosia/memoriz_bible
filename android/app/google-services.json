@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "996341534126",
+    "project_id": "memorizbible",
+    "storage_bucket": "memorizbible.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:996341534126:android:aafd8ec8fef1db85170c3f",
+        "android_client_info": {
+          "package_name": "com.example.memoriz_bible"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBORzI5-UmrnSY0hDJMNXtVXB_dpNyP9Fc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
