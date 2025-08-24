@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'questions_list.dart';
+import '../../models/questions_list.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'authentification.dart';
+import '../../screens/auth/authentification.dart';
 
 class MemorizationIntroPage extends StatefulWidget {
   @override
@@ -225,7 +225,7 @@ class _MemorizationIntroPageState extends State<MemorizationIntroPage> {
                       );
                     }).toList(),
                   ),
-                Spacer(),
+
                 ElevatedButton(
                   onPressed: isAnswered(index) ? nextPage : null,
                   style: ElevatedButton.styleFrom(

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // <- pour kReleaseMode
+import '../auth/auth_gate.dart';
 import 'intro_page.dart';
-import 'authentification.dart';
-import 'bible_verse_page.dart';
- // futur espace connecté
+import '../auth/authentification.dart';
+
+
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
 
@@ -18,13 +20,17 @@ class WelcomePage extends StatelessWidget {
           children: [
             const Spacer(flex: 2),
 
-            // Logo
-            Image.asset(
-              'assets/logo.png', // Remplace avec ton vrai logo
-              height: 200,
-
+            // Logo (ADMIN caché: appui long)
+            GestureDetector(
+              onLongPress: () {
+                // 👇 ouvre la page d’admin pour générer des codes
+                Navigator.of(context).pushNamed('/admin/generate');
+              },
+              child: Image.asset(
+                'assets/logo.png', // Remplace avec ton vrai logo
+                height: 200,
+              ),
             ),
-
 
             // Slogan
             Padding(
@@ -48,8 +54,8 @@ class WelcomePage extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => MemorizationIntroPage()),
+                      context,
+                      MaterialPageRoute(builder: (context) => MemorizationIntroPage()),
                     );
                   },
                   child: const Text("Let go, let God!"),
@@ -67,9 +73,9 @@ class WelcomePage extends StatelessWidget {
                   onPressed: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (context) => AuthPage()),
+                      MaterialPageRoute(builder: (context) =>  AuthGate()),
                     );
-                },
+                  },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: theme.primaryColor,
                     side: BorderSide(color: theme.primaryColor),
@@ -78,6 +84,8 @@ class WelcomePage extends StatelessWidget {
                 ),
               ),
             ),
+
+            // Petit bouton Admin visible seulement en debug (pas en release)
 
             const Spacer(),
           ],
