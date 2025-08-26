@@ -14,7 +14,7 @@ project 'Runner', {
 flutter_application_path = File.expand_path('..', __dir__)
 eval(File.read(File.join(flutter_application_path, '.flutter-plugins-dependencies')))
 
-require File.expand_path(File.join(flutter_application_path, 'packages', 'flutter_tools', 'bin', 'podhelper.rb'))
+require File.expand_path(File.join('..', 'Flutter', 'podhelper.rb'), __FILE__)
 
 target 'Runner' do
   use_frameworks!
