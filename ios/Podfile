@@ -16,6 +16,13 @@ eval(File.read(File.join(flutter_application_path, '.flutter-plugins-dependencie
 
 require File.expand_path(File.join('..', 'Flutter', 'podhelper.rb'), __FILE__)
 
+unless File.exist?(podhelper_path)
+  puts "⚠️ podhelper.rb not found, running flutter pub get..."
+  system("flutter pub get")
+end
+
+require podhelper_path
+
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
