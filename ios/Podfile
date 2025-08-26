@@ -1,7 +1,5 @@
-# Uncomment this line to define a global platform for your project
 platform :ios, '15.0'
 
-# CocoaPods analytics send network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
 project 'Runner', {
@@ -10,42 +8,23 @@ project 'Runner', {
   'Release' => :release,
 }
 
-# Chemin vers Flutter
 flutter_application_path = File.expand_path('..', __dir__)
-eval(File.read(File.join(flutter_application_path, '.flutter-plugins-dependencies')))
-
 podhelper_path = File.join(flutter_application_path, 'Flutter', 'podhelper.rb')
 
+# --- PATCH : auto-regénérer si manquant ---
 unless File.exist?(podhelper_path)
   puts "⚠️ podhelper.rb not found, running flutter pub get..."
   system("cd #{flutter_application_path} && flutter pub get")
 end
+# -----------------------------------------
 
-require podhelper_path
-# --------------------------------------------
+require podhelper_path if File.exist?(podhelper_path)
 
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
-  # 🔹 Important : charge les pods Flutter
   flutter_ios_podfile_setup
-
-  # ✅ Sécurisation de Generated.xcconfig
-  generated_xcode_build_settings_path = File.join('Flutter', 'Generated.xcconfig')
-  unless File.exist?(generated_xcode_build_settings_path)
-    puts "⚠️  Warning: #{generated_xcode_build_settings_path} not found. Running flutter pub get..."
-    system("flutter pub get")
-  end
-
-  if File.exist?(generated_xcode_build_settings_path)
-    File.foreach(generated_xcode_build_settings_path) do |line|
-      matches = line.match(/FLUTTER_ROOT=(.*)/)
-      ENV['FLUTTER_ROOT'] = matches[1].strip if matches
-    end
-  else
-    puts "❌ Still missing #{generated_xcode_build_settings_path}, check flutter configuration."
-  end
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
@@ -59,3 +38,4 @@ post_install do |installer|
     flutter_additional_ios_build_settings(target)
   end
 end
+
