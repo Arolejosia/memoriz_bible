@@ -1,16 +1,30 @@
 # Uncomment this line to define a global platform for your project
 platform :ios, '15.0'
 
-use_frameworks!
-use_modular_headers!
+# CocoaPods analytics send network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
-flutter_application_path = '../'
-load File.join(flutter_application_path, '.flutter-plugins-dependencies')
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+# Chemin vers Flutter
+flutter_application_path = File.expand_path('..', __dir__)
+eval(File.read(File.join(flutter_application_path, '.flutter-plugins-dependencies')))
+
+require File.expand_path(File.join(flutter_application_path, 'packages', 'flutter_tools', 'bin', 'podhelper.rb'))
 
 target 'Runner' do
-  # Flutter Podhelper
-  generated_xcode_build_settings_path = File.join('Flutter', 'Generated.xcconfig')
+  use_frameworks!
+  use_modular_headers!
 
+  # 🔹 Important : charge les pods Flutter
+  flutter_ios_podfile_setup
+
+  # ✅ Sécurisation de Generated.xcconfig
+  generated_xcode_build_settings_path = File.join('Flutter', 'Generated.xcconfig')
   unless File.exist?(generated_xcode_build_settings_path)
     puts "⚠️  Warning: #{generated_xcode_build_settings_path} not found. Running flutter pub get..."
     system("flutter pub get")
@@ -25,10 +39,7 @@ target 'Runner' do
     puts "❌ Still missing #{generated_xcode_build_settings_path}, check flutter configuration."
   end
 
-  use_frameworks!
-  use_modular_headers!
-
-  flutter_ios_podfile_setup
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
   target 'RunnerTests' do
     inherit! :search_paths
