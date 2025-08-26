@@ -23,6 +23,7 @@ workflows:
           flutter pub get
       - name: "📱 Install CocoaPods"
         script: |
+          flutter pub get
           cd ios
           pod install --repo-update
           cd ..
