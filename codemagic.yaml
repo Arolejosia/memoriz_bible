@@ -14,19 +14,18 @@ workflows:
         - $HOME/.pub-cache
         - $HOME/Library/Caches/CocoaPods
         - ios/Pods
-    scripts:
-      - name: 🔄 Clean project
-        script: |
-          flutter clean
-      - name: 📦 Get Flutter dependencies
-        script: |
-          flutter pub get
-      - name: 📱 Build iOS
-        script: |
-          cd ios
-          pod install --repo-update
-          cd ..
-          flutter build ios --release --no-codesign
+scripts:
+  - name: 🔄 Clean
+    script: flutter clean
+  - name: 📦 Get dependencies
+    script: flutter pub get
+  - name: 📱 Install CocoaPods
+    script: |
+      cd ios
+      pod install --repo-update
+      cd ..
+  - name: 🏗️ Build iOS
+    script: flutter build ios --release --no-codesign
       - name: 🤖 Build Android
         script: |
           flutter build apk --release
