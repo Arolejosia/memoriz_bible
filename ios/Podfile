@@ -19,12 +19,14 @@ def flutter_root
  end
 
 
-  File.foreach(generated_xcode_build_settings_path) do |line|
-    matches = line.match(/FLUTTER_ROOT=(.*)/)
-    return matches[1].strip if matches
+  if File.exist?(generated_xcode_build_settings_path)
+    File.foreach(generated_xcode_build_settings_path) do |line|
+      matches = line.match(/FLUTTER_ROOT=(.*)/)
+      ENV['FLUTTER_ROOT'] = matches[1].strip if matches
+    end
+  else
+    puts "❌ Still missing #{generated_xcode_build_settings_path}, check flutter configuration."
   end
-  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try running `flutter pub get`"
-end
 
 require File.expand_path(File.join(flutter_root, 'packages', 'flutter_tools', 'bin', 'podhelper.rb'))
 
