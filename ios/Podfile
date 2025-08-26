@@ -14,14 +14,15 @@ project 'Runner', {
 flutter_application_path = File.expand_path('..', __dir__)
 eval(File.read(File.join(flutter_application_path, '.flutter-plugins-dependencies')))
 
-require File.expand_path(File.join('..', 'Flutter', 'podhelper.rb'), __FILE__)
+podhelper_path = File.join(flutter_application_path, 'Flutter', 'podhelper.rb')
 
 unless File.exist?(podhelper_path)
   puts "⚠️ podhelper.rb not found, running flutter pub get..."
-  system("flutter pub get")
+  system("cd #{flutter_application_path} && flutter pub get")
 end
 
 require podhelper_path
+# --------------------------------------------
 
 target 'Runner' do
   use_frameworks!
