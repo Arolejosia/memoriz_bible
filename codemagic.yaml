@@ -7,26 +7,29 @@ workflows:
       xcode: latest
       cocoapods: default
       groups:
-        - appstore_credentials   # ← (optionnel) pour publier sur App Store
-        - keystore_credentials   # ← (optionnel) pour publier sur Play Store
+        - appstore_credentials   # (optionnel) pour publier sur App Store
+        - keystore_credentials   # (optionnel) pour publier sur Play Store
     cache:
       cache_paths:
         - $HOME/.pub-cache
         - $HOME/Library/Caches/CocoaPods
         - ios/Pods
-scripts:
-  - name: 🔄 Clean
-    script: flutter clean
-  - name: 📦 Get dependencies
-    script: flutter pub get
-  - name: 📱 Install CocoaPods
-    script: |
-      cd ios
-      pod install --repo-update
-      cd ..
-  - name: 🏗️ Build iOS
-    script: flutter build ios --release --no-codesign
-      - name: 🤖 Build Android
+    scripts:
+      - name: "🔄 Clean project"
+        script: |
+          flutter clean
+      - name: "📦 Get Flutter dependencies"
+        script: |
+          flutter pub get
+      - name: "📱 Install CocoaPods"
+        script: |
+          cd ios
+          pod install --repo-update
+          cd ..
+      - name: "🍏 Build iOS"
+        script: |
+          flutter build ios --release --no-codesign
+      - name: "🤖 Build Android"
         script: |
           flutter build apk --release
     artifacts:
