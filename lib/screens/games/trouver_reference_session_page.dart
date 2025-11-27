@@ -1,8 +1,12 @@
 // Fichier: lib/screens/games/trouver_reference_session_page.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../models/language_provider.dart';
 import '../../services/Bible_service.dart';
 import '../../widgets/question_widget.dart';
 import '../../services/audio_service.dart';
+import 'GameTranslations.dart';
+
 
 class TrouverReferenceSessionPage extends StatefulWidget {
   final String difficulty;
@@ -10,6 +14,7 @@ class TrouverReferenceSessionPage extends StatefulWidget {
   final String? sourceGroup;
   final String? sourceBook;
   final List<String>? sourceRefs;
+
   const TrouverReferenceSessionPage({
     super.key,
     required this.difficulty,
@@ -37,16 +42,20 @@ class _TrouverReferenceSessionPageState extends State<TrouverReferenceSessionPag
   void _loadNextQuestion() {
     if (_questionNumber > widget.sessionLength) {
       // TODO: Naviguer vers une page de résultats
-      print("FIN DE LA PARTIE ! Score: $_score / ${widget.sessionLength}");
-      Navigator.pop(context); // Pour l'instant, on revient en arrière
+      final lang = context.read<LanguageProvider>().language;
+
+      print("${GameTranslations.get("game_over", lang)} $_score / ${widget.sessionLength}");
+      Navigator.pop(context);
       return;
     }
+    final lang = context.read<LanguageProvider>().language;
     setState(() {
       _futureQuestion = BibleService().generateReferenceQuestion(
         difficulty: widget.difficulty,
         sourceGroup: widget.sourceGroup,
         sourceBook: widget.sourceBook,
         sourceRefs: widget.sourceRefs,
+        language: lang,
       );
     });
   }
@@ -62,8 +71,13 @@ class _TrouverReferenceSessionPageState extends State<TrouverReferenceSessionPag
 
   @override
   Widget build(BuildContext context) {
+    final languageProvider = context.watch<LanguageProvider>();
+    final lang = languageProvider.language;
+
     return Scaffold(
-      appBar: AppBar(title: Text("Question $_questionNumber / ${widget.sessionLength}")),
+      appBar: AppBar(
+          title: Text("${GameTranslations.get("question_title", lang)} $_questionNumber / ${widget.sessionLength}")
+      ),
       body: FutureBuilder<ReferenceQuestion>(
         future: _futureQuestion,
         builder: (context, snapshot) {
@@ -71,7 +85,9 @@ class _TrouverReferenceSessionPageState extends State<TrouverReferenceSessionPag
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text("Erreur : ${snapshot.error}"));
+            return Center(
+                child: Text("${GameTranslations.get("error", lang)} ${snapshot.error}")
+            );
           }
           return QuestionWidget(
             question: snapshot.data!,

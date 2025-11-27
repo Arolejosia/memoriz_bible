@@ -8,6 +8,7 @@ class Verse {
   final String reference;
   final String book;
   final VerseStatus status;
+  final String? category;
   final int progressLevel;
   final bool isUserAdded;
   final DateTime? updatedAt;
@@ -24,6 +25,7 @@ class Verse {
     required this.book,
     required this.status,
     required this.progressLevel,
+    this.category,
     required this.isUserAdded,
     this.updatedAt,
     required this.scores,
@@ -39,6 +41,7 @@ class Verse {
       id: doc.id,
       reference: data['reference'] ?? '',
       book: data['book'] ?? '',
+      category: data['category'],
       status: VerseStatus.values.firstWhere((e) => e.name == data['status'], orElse: () => VerseStatus.neutral),
       progressLevel: data['progressLevel'] ?? 0,
       isUserAdded: data['isUserAdded'] ?? false,
@@ -55,6 +58,7 @@ class Verse {
     return {
       'reference': reference,
       'book': book,
+      'category': category,
       'status': status.name,
       'progressLevel': progressLevel,
       'isUserAdded': isUserAdded,

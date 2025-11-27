@@ -1,94 +1,344 @@
-// fichier: lib/home_page.dart
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../../services/audio_service.dart';
+import 'package:memoriz_bible/screens/core/settings_page.dart';
+import 'package:provider/provider.dart';
+import '../../Bibliotheque.dart';
 import '../../widgets/main_drawer.dart';
-import 'progression_dashboard_page.dart'; // On va créer cette page
-import'pageDeConfiguration.dart';// Votre page de configuration existante
+import '../../models/language_provider.dart';
+import '../auth/profile_page.dart';
+import '../groups/groups_list_page.dart';
+import 'about_page.dart';
+import 'progression_dashboard_page.dart';
+import 'pageDeConfiguration.dart';
 
-class HomePage extends StatelessWidget {
+
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final User? _user = FirebaseAuth.instance.currentUser;
+  String _userName = '';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    if (_user == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+    try {
+      final userDoc =
+      await FirebaseFirestore.instance.collection('users').doc(_user!.uid).get();
+      if (userDoc.exists && mounted) {
+        setState(() {
+          _userName = userDoc.data()?['fullName'] ?? '';
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      print("Erreur lors du chargement des données utilisateur: $e");
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final isEnglish = languageProvider.language == 'en';
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'MemorizBible',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 24.0, // Taille de police augmentée
-          ),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24.0),
         ),
-
+        actions: [
+          // 🔄 Bouton pour changer de langue directement
+          IconButton(
+            icon: Text(languageProvider.flagEmoji, style: const TextStyle(fontSize: 22)),
+            tooltip: isEnglish ? "Change language" : "Changer de langue",
+            onPressed: () => languageProvider.toggleLanguage(),
+          ),
+          IconButton(
+            icon: const Icon(Icons.person_outline),
+            tooltip: isEnglish ? "Profile & Progress" : "Profil & Progrès",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProfilePage()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: isEnglish ? "Settings" : "Paramètres",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsPage()),
+              );
+            },
+          ),
+        ],
       ),
       drawer: const MainDrawer(),
-      body: Center(
+      body: Stack(
+        children: [
+          // --- CONTENU PRINCIPAL AVEC SCROLL ---
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_userName.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0, top: 12),
+                    child: Text(
+                      isEnglish
+                          ? '👋 Welcome, $_userName!'
+                          : '👋 Bienvenue, $_userName !',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineMedium
+                          ?.copyWith(color: Theme.of(context).colorScheme.primary),
+                    ),
+                  ),
+
+                const SizedBox(height: 24),
+
+                // === MODE APPRENTISSAGE ===
+                _buildMainButton(
+                  icon: Icons.school,
+                  label: isEnglish ? "Learning Mode" : "Mode Apprentissage",
+                  color: Colors.indigo,
+                  textColor: Colors.white,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const ProgressionDashboardPage()),
+                    );
+                  },
+                  description: isEnglish
+                      ? "Follow a structured path to memorize verses for long-term retention."
+                      : "Suivez un parcours structuré pour mémoriser les versets à long terme.",
+                ),
+
+                const SizedBox(height: 32),
+
+                // === MODE JEU LIBRE ===
+                _buildOutlinedButton(
+                  icon: Icons.gamepad_outlined,
+                  label: isEnglish ? "Free Game Mode" : "Mode Jeu Libre",
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const PageDeJeuPrincipale()),
+                    );
+                  },
+                  description: isEnglish
+                      ? "Train with any passage without affecting your progress."
+                      : "Entraînez-vous sur n'importe quel passage sans affecter votre progression.",
+                ),
+
+                const SizedBox(height: 40),
+                const Divider(height: 30, thickness: 1.2),
+
+                Text(
+                  isEnglish ? "📚 Other sections" : "📚 Autres espaces",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.indigo[800],
+                  ),
+                  textAlign: TextAlign.left,
+                ),
+                const SizedBox(height: 16),
+
+                _buildCardTile(
+                  icon: Icons.book,
+                  title: isEnglish ? "Library" : "Bibliothèque",
+                  subtitle: isEnglish
+                      ? "Explore all your memorized and favorite verses."
+                      : "Explorez tous vos versets mémorisés et vos favoris.",
+                  color: Colors.orange.shade400,
+                  onTap: () {
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => VerseLibraryPage(
+                          language: context.read<LanguageProvider>().language,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                _buildCardTile(
+                  icon: Icons.group_outlined,
+                  title: isEnglish ? "My Groups" : "Mes Groupes",
+                  subtitle: isEnglish
+                      ? "Chat, share, and learn with your community."
+                      : "Discutez, partagez et apprenez avec votre communauté.",
+                  color: Colors.teal.shade400,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const GroupsListPage()),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 50),
+              ],
+            ),
+          ),
+
+          // --- BOUTON "?" EN HAUT À DROITE ---
+          Positioned(
+            top: 10,
+            right: 10,
+            child: IconButton(
+              tooltip: isEnglish ? "About MemorizBible" : "À propos de MemorizBible",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AboutPage()),
+                );
+              },
+              icon: Container(
+                decoration: BoxDecoration(
+                  color: Colors.indigo.withOpacity(0.08),
+                  shape: BoxShape.circle,
+                ),
+                padding: const EdgeInsets.all(6),
+                child: const Icon(Icons.help_outline, color: Colors.indigo),
+              ),
+            ),
+          ),
+        ],
+      ),
+
+
+    );
+  }
+
+  // --- Bouton principal plein ---
+  Widget _buildMainButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Color textColor,
+    required VoidCallback onTap,
+    required String description,
+  }) {
+    return Column(
+      children: [
+        ElevatedButton.icon(
+          icon: Icon(icon, size: 36),
+          label: Text(label, style: const TextStyle(fontSize: 22)),
+          onPressed: onTap,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: color,
+            foregroundColor: textColor,
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+            textStyle: const TextStyle(fontWeight: FontWeight.bold),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            elevation: 5,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(description,
+            textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
+      ],
+    );
+  }
+
+  // --- Bouton contour ---
+  Widget _buildOutlinedButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    required String description,
+  }) {
+    return Column(
+      children: [
+        OutlinedButton.icon(
+          icon: Icon(icon, size: 36),
+          label: Text(label, style: const TextStyle(fontSize: 22)),
+          onPressed: onTap,
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+            textStyle: const TextStyle(fontWeight: FontWeight.bold),
+            side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(description,
+            textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
+      ],
+    );
+  }
+
+  // --- Carte “accès rapide” ---
+  Widget _buildCardTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
             children: [
-              // --- BOUTON 1 : APPRENTISSAGE ---
-              ElevatedButton.icon(
-                icon: const Icon(Icons.school, size: 36), // Taille de l'icône augmentée
-                label: const Text("Mode Apprentissage", style: TextStyle(fontSize: 22)), // Taille du texte augmentée
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ProgressionDashboardPage()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.indigo,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32), // Padding augmenté
-                  textStyle: const TextStyle(fontWeight: FontWeight.bold),
-                  shape: RoundedRectangleBorder( // Coins arrondis
-                    borderRadius: BorderRadius.circular(12.0),
-                  ),
-                  elevation: 5, // Ajout d'une ombre
+              Container(
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(12),
+                child: Icon(icon, color: color, size: 32),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 18)),
+                    const SizedBox(height: 4),
+                    Text(subtitle,
+                        style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text(
-                "Suivez un parcours structuré pour mémoriser les versets à long terme. Votre progression est enregistrée.",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
-                // Vous pouvez aussi augmenter la taille de ce texte si besoin
-                // style: TextStyle(color: Colors.grey, fontSize: 16),
-              ),
-
-              const SizedBox(height: 48),
-
-              // --- BOUTON 2 : JEU LIBRE ---
-              OutlinedButton.icon(
-                icon: const Icon(Icons.gamepad_outlined, size: 36), // Taille de l'icône augmentée
-                label: const Text("Mode Jeu Libre", style: TextStyle(fontSize: 22)), // Taille du texte augmentée
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const  PageDeJeuPrincipale()),
-                  );
-                },
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32), // Padding augmenté
-                  textStyle: const TextStyle(fontWeight: FontWeight.bold),
-                  side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2), // Bordure plus épaisse
-                  shape: RoundedRectangleBorder( // Coins arrondis
-                    borderRadius: BorderRadius.circular(12.0),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                "Entraînez-vous sur n'importe quel jeu et n'importe quel passage, sans que cela n'affecte votre progression.",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
-                // Vous pouvez aussi augmenter la taille de ce texte si besoin
-                // style: TextStyle(color: Colors.grey, fontSize: 16),
-              ),
+              const Icon(Icons.arrow_forward_ios, size: 18, color: Colors.grey),
             ],
           ),
         ),

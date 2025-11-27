@@ -1,31 +1,45 @@
-// Fichier: lib/auth_gate.dart
+// File: lib/auth/auth_gate.dart
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../core/home_page.dart';
-import 'authentification.dart'; // Votre page de connexion
+import 'authentification.dart';
+import 'verify_email_page.dart';
 
+/// Authentication gate that manages user authentication flow
+/// Portail d'authentification qui gère le flux d'authentification des utilisateurs
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      // Écoute en temps réel les changements de statut de connexion
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // L'utilisateur n'est pas encore authentifié, on attend
+        // Show loading indicator while checking authentication state
+        // Afficher l'indicateur de chargement pendant la vérification de l'état d'authentification
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        // Si un utilisateur est connecté, on affiche la page d'accueil
-        if (snapshot.hasData) {
-          return const HomePage();
+        // If no user is connected, go to login page
+        // Si aucun utilisateur n'est connecté, aller à la page de connexion
+        if (!snapshot.hasData) {
+          return const AuthPage();
         }
 
-        // Sinon, on affiche la page de connexion/inscription
-        return const AuthPage();
+        // User is connected, but is their email verified?
+        // L'utilisateur est connecté, mais son email est-il vérifié ?
+        final user = snapshot.data!;
+        if (!user.emailVerified) {
+          // If NO, show verification page
+          // Si NON, afficher la page de vérification
+          return const VerifyEmailPage();
+        }
+
+        // If YES, show home page
+        // Si OUI, afficher la page d'accueil
+        return const HomePage();
       },
     );
   }

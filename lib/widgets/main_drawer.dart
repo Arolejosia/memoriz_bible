@@ -1,68 +1,105 @@
 // fichier: lib/widgets/main_drawer.dart
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
-// Importez vos pages ici. Assurez-vous que les chemins sont corrects !
 import '../Bibliotheque.dart';
+
+import '../screens/auth/authentification.dart';
 import '../screens/auth/profile_page.dart';
+import '../screens/core/about_page.dart';
+import '../screens/core/home_page.dart';
 import '../screens/core/settings_page.dart';
 import '../screens/duels/multiplayer_hub_page.dart';
 import '../screens/games/trouver_reference_config_page.dart';
 import '../screens/groups/create_group_page.dart';
 import '../screens/groups/groups_list_page.dart';
+import 'package:provider/provider.dart';
+import '../models/language_provider.dart';
 
 
-class MainDrawer extends StatelessWidget {
+class MainDrawer extends StatefulWidget {
   const MainDrawer({super.key});
 
   @override
+  State<MainDrawer> createState() => _MainDrawerState();
+}
+
+class _MainDrawerState extends State<MainDrawer> {
+  final User? _user = FirebaseAuth.instance.currentUser;
+
+  @override
   Widget build(BuildContext context) {
+    // On récupère la langue actuelle. 'watch' permet de reconstruire si la langue change.
+    final lang = context.watch<LanguageProvider>().language;
+
+    // Helper pour simplifier les appels de traduction
+    String t(String key) => DrawerTranslations.t(key, lang);
+
     return Drawer(
       child: ListView(
-        // Important: Retirez tout padding de la ListView.
         padding: EdgeInsets.zero,
         children: [
-          const DrawerHeader(
-            decoration: BoxDecoration(
+          DrawerHeader(
+            decoration: const BoxDecoration(
               color: Colors.indigo,
             ),
             child: Text(
-              'MemorizBible',
-              style: TextStyle(
+              t('title'), // <--- TRADUIT
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 24,
               ),
             ),
           ),
+
           ListTile(
-            leading: const Icon(Icons.book),
-            title: const Text('Bibliothèque'),
+            leading: const Icon(Icons.home),
+            title: Text(t('home')), // <--- TRADUIT
             onTap: () {
-              // Ferme le drawer puis navigue
               Navigator.pop(context);
-              Navigator.pushReplacement(
+              Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (context) => const VerseLibraryPage()),
+                MaterialPageRoute(builder: (context) => const HomePage()),
+                    (route) => false,
               );
             },
           ),
+
+          const Divider(),
+
           ListTile(
-            leading: const Icon(Icons.person),
-            title: const Text('Profil & Progrès'),
+            leading: const Icon(Icons.book),
+            title: Text(t('library')), // <--- TRADUIT
             onTap: () {
               Navigator.pop(context);
-              Navigator.pushReplacement(
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => VerseLibraryPage(
+                    language: context.read<LanguageProvider>().language,
+                  ),
+                ),
+              );
+            },
+          ),
+
+          ListTile(
+            leading: const Icon(Icons.person),
+            title: Text(t('profile')), // <--- TRADUIT
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const ProfilePage()),
               );
             },
           ),
+
           const Divider(),
 
-          // ✅ 2. AJOUTEZ CE BLOC POUR LES GROUPES
           ListTile(
             leading: const Icon(Icons.group_outlined),
-            title: const Text('Mes Groupes'),
+            title: Text(t('my_groups')), // <--- TRADUIT
             onTap: () {
               Navigator.pop(context);
               Navigator.push(
@@ -71,11 +108,12 @@ class MainDrawer extends StatelessWidget {
               );
             },
           ),
+
           ListTile(
             leading: const Icon(Icons.group_add_outlined),
-            title: const Text('Créer un groupe'),
+            title: Text(t('create_group')), // <--- TRADUIT
             onTap: () {
-              Navigator.pop(context); // Ferme le drawer
+              Navigator.pop(context);
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const CreateGroupPage()),
@@ -83,24 +121,23 @@ class MainDrawer extends StatelessWidget {
             },
           ),
 
-
           const Divider(),
+
           ListTile(
             leading: const Icon(Icons.settings_outlined),
-            title: const Text('Paramètres'),
+            title: Text(t('settings')), // <--- TRADUIT
             onTap: () {
-              // Ferme le drawer avant d'ouvrir la nouvelle page
               Navigator.pop(context);
-              // Ouvre la page de paramètres
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsPage()),
               );
             },
           ),
+
           ListTile(
             leading: const Icon(Icons.quiz_outlined),
-            title: const Text('Jeu : Trouver la Référence'),
+            title: Text(t('game_find_ref')), // <--- TRADUIT
             onTap: () {
               Navigator.pop(context);
               Navigator.push(
@@ -109,21 +146,78 @@ class MainDrawer extends StatelessWidget {
               );
             },
           ),
+
           const Divider(),
+
           ListTile(
             leading: const Icon(Icons.people_alt_outlined),
-            title: const Text('Multiplayer / Duels'),
+            title: Text(t('multiplayer')), // <--- TRADUIT
             onTap: () {
-              Navigator.pop(context); // Close the drawer first
+              Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const MultiplayerHubPage()),
+                MaterialPageRoute(builder: (context) => const HubPage()),
               );
             },
           ),
-          // Ajoutez d'autres liens ici (Paramètres, À Propos, etc.)
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: Text(t('about')), // <--- TRADUIT
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AboutPage()),
+              );
+            },
+          ),
+          const Divider(),
+          if (_user != null)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.logout),
+                label: Text(t('logout')), // <--- TRADUIT
+                onPressed: () async {
+                  await FirebaseAuth.instance.signOut();
+                  if (mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const AuthPage()),
+                          (route) => false,
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+              ),
+            ),
         ],
       ),
     );
+  }
+}
+
+// File: lib/l10n/drawer_translations.dart
+
+class DrawerTranslations {
+  static String t(String key, String lang) {
+    final Map<String, Map<String, String>> translations = {
+      'title': {'fr': 'MemorizBible', 'en': 'MemorizBible'},
+      'home': {'fr': 'Accueil', 'en': 'Home'},
+      'library': {'fr': 'Bibliothèque', 'en': 'Library'},
+      'profile': {'fr': 'Profil & Progrès', 'en': 'Profile & Progress'},
+      'my_groups': {'fr': 'Mes Groupes', 'en': 'My Groups'},
+      'create_group': {'fr': 'Créer un groupe', 'en': 'Create a Group'},
+      'settings': {'fr': 'Paramètres', 'en': 'Settings'},
+      'game_find_ref': {'fr': 'Jeu : Trouver la Référence', 'en': 'Game: Find the Reference'},
+      'multiplayer': {'fr': 'Multiplayer / Duels', 'en': 'Multiplayer / Duels'},
+      'about': {'fr': 'À propos', 'en': 'About'},
+      'logout': {'fr': 'Se déconnecter', 'en': 'Log Out'},
+    };
+    return translations[key]?[lang] ?? key;
   }
 }

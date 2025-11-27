@@ -2,10 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../Bibliotheque.dart';
+import '../../models/language_provider.dart';
 import '../../models/verse_model.dart';
+import 'GameTranslations.dart';
 import 'trouver_reference_session_page.dart';
-
-
 
 class TrouverReferenceConfigPage extends StatefulWidget {
   const TrouverReferenceConfigPage({super.key});
@@ -16,21 +16,28 @@ class TrouverReferenceConfigPage extends StatefulWidget {
 
 class _TrouverReferenceConfigPageState extends State<TrouverReferenceConfigPage> {
   String _difficulty = "moyen";
-  // ✅ On définit nos sous-catégories ici
-  final Map<String, String> oldTestamentCategories = const {
-    "pentateuque": "Pentateuque",
-    "historiques": "Livres Historiques",
-    "poetiques": "Livres Poétiques & Sagesse",
-    "prophetes_majeurs": "Prophètes Majeurs",
-    "prophetes_mineurs": "Prophètes Mineurs",
-  };
-  final Map<String, String> newTestamentCategories = const {
-    "evangiles": "Évangiles",
-    "histoire_nt": "Actes des Apôtres",
-    "epitres_paul": "Épîtres de Paul",
-    "epitres_generales": "Épîtres Générales",
-    "apocalypse": "Apocalypse",
-  };
+
+  // Méthode pour obtenir les catégories de l'Ancien Testament traduites
+  Map<String, String> _getOldTestamentCategories(String lang) {
+    return {
+      "pentateuque": GameTranslations.get("category_pentateuch", lang),
+      "historiques": GameTranslations.get("category_historical", lang),
+      "poetiques": GameTranslations.get("category_poetic", lang),
+      "prophetes_majeurs": GameTranslations.get("category_major_prophets", lang),
+      "prophetes_mineurs": GameTranslations.get("category_minor_prophets", lang),
+    };
+  }
+
+  // Méthode pour obtenir les catégories du Nouveau Testament traduites
+  Map<String, String> _getNewTestamentCategories(String lang) {
+    return {
+      "evangiles": GameTranslations.get("category_gospels", lang),
+      "histoire_nt": GameTranslations.get("category_acts", lang),
+      "epitres_paul": GameTranslations.get("category_paul_letters", lang),
+      "epitres_generales": GameTranslations.get("category_general_letters", lang),
+      "apocalypse": GameTranslations.get("category_revelation", lang),
+    };
+  }
 
   void _launchGame({
     int sessionLength = 10,
@@ -55,21 +62,23 @@ class _TrouverReferenceConfigPageState extends State<TrouverReferenceConfigPage>
   @override
   Widget build(BuildContext context) {
     final library = context.watch<VerseLibrary>();
+    final languageProvider = context.watch<LanguageProvider>();
+    final lang = languageProvider.language;
+
     final masteredVerses = library.myVerseCategories
         .expand((cat) => cat.verses)
         .where((v) => v.status == VerseStatus.mastered)
         .toList();
     final canPlayFromLibrary = masteredVerses.length >= 10;
 
-    // Souligner ce texte
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text(
-          "Configurer la Partie",
-          style: TextStyle(decoration: TextDecoration.underline),
+        title: Text(
+          GameTranslations.get("config_title", lang),
+          style: const TextStyle(decoration: TextDecoration.underline),
         ),
-        backgroundColor: Colors.blue.shade100, // Fond bleu clair pour l'AppBar
+        backgroundColor: Colors.blue.shade100,
         elevation: 0,
       ),
       body: CustomScrollView(
@@ -78,7 +87,7 @@ class _TrouverReferenceConfigPageState extends State<TrouverReferenceConfigPage>
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: _buildDifficultySelector(),
+              child: _buildDifficultySelector(lang),
             ),
           ),
 
@@ -93,13 +102,15 @@ class _TrouverReferenceConfigPageState extends State<TrouverReferenceConfigPage>
               children: [
                 _buildSourceCard(
                   icon: Icons.public,
-                  title: "Toute la Bible",
+                  title: GameTranslations.get("source_whole_bible", lang),
                   onTap: () => _launchGame(),
                 ),
                 _buildSourceCard(
                   icon: Icons.school,
-                  title: "Ma Bibliothèque",
-                  subtitle: canPlayFromLibrary ? "${masteredVerses.length} versets" : "10 versets requis",
+                  title: GameTranslations.get("source_my_library", lang),
+                  subtitle: canPlayFromLibrary
+                      ? "${masteredVerses.length} ${GameTranslations.get("verses_count", lang)}"
+                      : "10 ${GameTranslations.get("verses_required", lang)}",
                   onTap: canPlayFromLibrary
                       ? () => _launchGame(
                     sourceRefs: masteredVerses.map((v) => v.reference).toList(),
@@ -109,13 +120,13 @@ class _TrouverReferenceConfigPageState extends State<TrouverReferenceConfigPage>
                 ),
                 _buildSourceCard(
                   icon: Icons.book_outlined,
-                  title: "Ancien Testament",
-                  onTap: () { // ✅ MODIFIÉ : Navigue vers la page de sous-catégories
+                  title: GameTranslations.get("source_old_testament", lang),
+                  onTap: () {
                     Navigator.push(context, MaterialPageRoute(builder: (_) =>
                         SubcategorySelectionPage(
-                          testamentTitle: "Ancien Testament",
+                          testamentTitle: GameTranslations.get("source_old_testament", lang),
                           testamentKey: "ancien_testament",
-                          categories: oldTestamentCategories,
+                          categories: _getOldTestamentCategories(lang),
                           difficulty: _difficulty,
                         )
                     ));
@@ -123,13 +134,13 @@ class _TrouverReferenceConfigPageState extends State<TrouverReferenceConfigPage>
                 ),
                 _buildSourceCard(
                   icon: Icons.book,
-                  title: "Nouveau Testament",
-                  onTap: () { // ✅ MODIFIÉ : Navigue vers la page de sous-catégories
+                  title: GameTranslations.get("source_new_testament", lang),
+                  onTap: () {
                     Navigator.push(context, MaterialPageRoute(builder: (_) =>
                         SubcategorySelectionPage(
-                          testamentTitle: "Nouveau Testament",
+                          testamentTitle: GameTranslations.get("source_new_testament", lang),
                           testamentKey: "nouveau_testament",
-                          categories: newTestamentCategories,
+                          categories: _getNewTestamentCategories(lang),
                           difficulty: _difficulty,
                         )
                     ));
@@ -137,15 +148,13 @@ class _TrouverReferenceConfigPageState extends State<TrouverReferenceConfigPage>
                 ),
                 _buildSourceCard(
                   icon: Icons.search,
-                  title: "Choisir un Livre Spécifique",
+                  title: GameTranslations.get("source_specific_book", lang),
                   onTap: () async {
-                    // Ouvre la page de sélection et attend le résultat
                     final selectedBook = await Navigator.push<String>(
                       context,
                       MaterialPageRoute(builder: (_) => const BookSelectionPage()),
                     );
 
-                    // Si l'utilisateur a choisi un livre, on lance le jeu
                     if (selectedBook != null) {
                       _launchGame(sourceBook: selectedBook);
                     }
@@ -160,12 +169,24 @@ class _TrouverReferenceConfigPageState extends State<TrouverReferenceConfigPage>
   }
 
   // Widget pour le sélecteur de difficulté stylisé
-  Widget _buildDifficultySelector() {
+  Widget _buildDifficultySelector(String lang) {
     return SegmentedButton<String>(
-      segments: const [
-        ButtonSegment(value: "facile", label: Text("Facile"), icon: Icon(Icons.sentiment_very_satisfied)),
-        ButtonSegment(value: "moyen", label: Text("Moyen"), icon: Icon(Icons.sentiment_satisfied)),
-        ButtonSegment(value: "difficile", label: Text("Difficile"), icon: Icon(Icons.sentiment_very_dissatisfied)),
+      segments: [
+        ButtonSegment(
+            value: "facile",
+            label: Text(GameTranslations.get("difficulty_easy", lang)),
+            icon: const Icon(Icons.sentiment_very_satisfied)
+        ),
+        ButtonSegment(
+            value: "moyen",
+            label: Text(GameTranslations.get("difficulty_medium", lang)),
+            icon: const Icon(Icons.sentiment_satisfied)
+        ),
+        ButtonSegment(
+            value: "difficile",
+            label: Text(GameTranslations.get("difficulty_hard", lang)),
+            icon: const Icon(Icons.sentiment_very_dissatisfied)
+        ),
       ],
       selected: {_difficulty},
       onSelectionChanged: (newSelection) {
@@ -196,23 +217,36 @@ class _TrouverReferenceConfigPageState extends State<TrouverReferenceConfigPage>
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: isEnabled
-                ? [Colors.blue.shade100, Colors.blue.shade300] // Dégradé de bleu pour les cartes actives
-                : [Colors.grey.shade200, Colors.grey.shade400], // Dégradé de gris pour les cartes inactives
+                ? [Colors.blue.shade100, Colors.blue.shade300]
+                : [Colors.grey.shade200, Colors.grey.shade400],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.withOpacity(0.3)), // Bordure grise subtile
+          border: Border.all(color: Colors.grey.withOpacity(0.3)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 40, color: isEnabled ? Colors.blue.shade700 : Colors.grey.shade600), // Icônes bleues ou grises
+            Icon(icon, size: 40, color: isEnabled ? Colors.blue.shade700 : Colors.grey.shade600),
             const SizedBox(height: 12),
-            Text(title, textAlign: TextAlign.center, style: TextStyle(color: isEnabled ? Colors.black87 : Colors.black54, fontWeight: FontWeight.bold)), // Texte noir ou gris
+            Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: isEnabled ? Colors.black87 : Colors.black54,
+                    fontWeight: FontWeight.bold
+                )
+            ),
             if (subtitle != null) ...[
               const SizedBox(height: 4),
-              Text(subtitle, style: TextStyle(color: isEnabled ? Colors.black54 : Colors.black38, fontSize: 12)), // Sous-titre gris
+              Text(
+                  subtitle,
+                  style: TextStyle(
+                      color: isEnabled ? Colors.black54 : Colors.black38,
+                      fontSize: 12
+                  )
+              ),
             ]
           ],
         ),
@@ -229,8 +263,8 @@ class BookSelectionPage extends StatefulWidget {
 }
 
 class _BookSelectionPageState extends State<BookSelectionPage> {
-  // La liste complète de tous les livres
-  final List<String> _allBooks = const [
+  // La liste complète de tous les livres (en français - clés internes)
+  final List<String> _allBooksKeys = const [
     "Genèse", "Exode", "Lévitique", "Nombres", "Deutéronome", "Josué", "Juges", "Ruth",
     "1 Samuel", "2 Samuel", "1 Rois", "2 Rois", "1 Chroniques", "2 Chroniques", "Esdras", "Néhémie", "Esther",
     "Job", "Psaumes", "Proverbes", "Ecclésiaste", "Cantique des Cantiques", "Ésaïe", "Jérémie", "Lamentations",
@@ -241,34 +275,37 @@ class _BookSelectionPageState extends State<BookSelectionPage> {
     "2 Jean", "3 Jean", "Jude", "Apocalypse"
   ];
 
-  // La liste qui sera affichée (et filtrée par la recherche)
-  List<String> _filteredBooks = [];
+  List<String> _filteredBooksKeys = [];
 
   @override
   void initState() {
     super.initState();
-    _filteredBooks = _allBooks;
+    _filteredBooksKeys = _allBooksKeys;
   }
 
-  void _filterBooks(String query) {
+  void _filterBooks(String query, String lang) {
     setState(() {
-      _filteredBooks = _allBooks
-          .where((book) => book.toLowerCase().contains(query.toLowerCase()))
-          .toList();
+      _filteredBooksKeys = _allBooksKeys.where((bookKey) {
+        final translatedName = GameTranslations.getBookName(bookKey, lang);
+        return translatedName.toLowerCase().contains(query.toLowerCase());
+      }).toList();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final languageProvider = context.watch<LanguageProvider>();
+    final lang = languageProvider.language;
+
     return Scaffold(
       backgroundColor: const Color(0xff1a2333),
       appBar: AppBar(
         title: TextField(
-          onChanged: _filterBooks,
+          onChanged: (query) => _filterBooks(query, lang),
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Rechercher un livre...',
-            hintStyle: TextStyle(color: Colors.white70),
+          decoration: InputDecoration(
+            hintText: GameTranslations.get("search_book_hint", lang),
+            hintStyle: const TextStyle(color: Colors.white70),
             border: InputBorder.none,
           ),
           style: const TextStyle(color: Colors.white, fontSize: 18),
@@ -276,14 +313,16 @@ class _BookSelectionPageState extends State<BookSelectionPage> {
         backgroundColor: const Color(0xff212d40),
       ),
       body: ListView.builder(
-        itemCount: _filteredBooks.length,
+        itemCount: _filteredBooksKeys.length,
         itemBuilder: (context, index) {
-          final book = _filteredBooks[index];
+          final bookKey = _filteredBooksKeys[index];
+          final translatedName = GameTranslations.getBookName(bookKey, lang);
+
           return ListTile(
-            title: Text(book, style: const TextStyle(color: Colors.white)),
+            title: Text(translatedName, style: const TextStyle(color: Colors.white)),
             onTap: () {
-              // ✅ Renvoie le livre sélectionné à la page précédente
-              Navigator.pop(context, book);
+              // Renvoie la clé du livre (nom français) pour compatibilité avec le système existant
+              Navigator.pop(context, bookKey);
             },
           );
         },
@@ -291,8 +330,6 @@ class _BookSelectionPageState extends State<BookSelectionPage> {
     );
   }
 }
-
-
 
 class SubcategorySelectionPage extends StatelessWidget {
   final String testamentTitle;
@@ -323,11 +360,14 @@ class SubcategorySelectionPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final languageProvider = context.watch<LanguageProvider>();
+    final lang = languageProvider.language;
+
     return Scaffold(
-      backgroundColor: Colors.blueGrey[50], // Fond légèrement bleuté
+      backgroundColor: Colors.blueGrey[50],
       appBar: AppBar(
         title: Text(testamentTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.black, // Bleu plus soutenu pour l'AppBar
+        backgroundColor: Colors.black,
         elevation: 2,
       ),
       body: Padding(
@@ -337,11 +377,11 @@ class SubcategorySelectionPage extends StatelessWidget {
             // L'option pour jouer sur tout le testament
             _buildCategoryCard(
               context,
-              title: "Tout $testamentTitle",
-              icon: Icons.auto_stories, // Icône représentant un livre ouvert
+              title: "${GameTranslations.get("all_testament", lang)} $testamentTitle",
+              icon: Icons.auto_stories,
               onTap: () => _launchGame(context, sourceGroup: testamentKey),
             ),
-            const SizedBox(height: 16), // Espace entre les cartes
+            const SizedBox(height: 16),
             const Divider(thickness: 1, color: Colors.blueGrey),
             const SizedBox(height: 16),
             // La liste des sous-catégories
@@ -351,7 +391,7 @@ class SubcategorySelectionPage extends StatelessWidget {
                 child: _buildCategoryCard(
                   context,
                   title: entry.value,
-                  icon: Icons.category, // Icône générique pour les catégories
+                  icon: Icons.category,
                   onTap: () => _launchGame(context, sourceGroup: entry.key),
                 ),
               );
@@ -362,13 +402,13 @@ class SubcategorySelectionPage extends StatelessWidget {
     );
   }
 
-  // Widget pour les cartes de catégorie
   Widget _buildCategoryCard(BuildContext context, {required String title, required IconData icon, required VoidCallback onTap}) {
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
-        leading: Icon(icon, color: Theme.of(context).primaryColor, size: 30),        title: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+        leading: Icon(icon, color: Theme.of(context).primaryColor, size: 30),
+        title: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.blueGrey),
         onTap: onTap,
       ),

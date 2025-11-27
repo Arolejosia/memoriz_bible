@@ -3,6 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import '../../models/language_provider.dart';
+import 'group_settings_page.dart';
 
 class CreateGroupPage extends StatefulWidget {
   const CreateGroupPage({super.key});
@@ -12,12 +15,10 @@ class CreateGroupPage extends StatefulWidget {
 }
 
 class _CreateGroupPageState extends State<CreateGroupPage> {
-  // Controllers to get the text from the input fields
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
-  // State variables
   bool _isPublic = true;
   bool _isLoading = false;
 
@@ -28,9 +29,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     super.dispose();
   }
 
-  /// Handles the creation of the group in Firestore
   Future<void> _createGroup() async {
-    // First, validate the form inputs
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -39,33 +38,75 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
 
     final User? currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
-      // Handle error: user is not logged in
       setState(() => _isLoading = false);
       return;
     }
 
+    final lang = context.read<LanguageProvider>().language;
+    String t(String key) => CreateGroupTranslations.t(key, lang);
+
     try {
-      // ✅ Add a new document to the 'groups' collection
-      await FirebaseFirestore.instance.collection('groups').add({
+      final newGroupRef = await FirebaseFirestore.instance.collection('groups').add({
         'name': _nameController.text.trim(),
         'description': _descriptionController.text.trim(),
         'isPublic': _isPublic,
         'adminId': currentUser.uid,
-        'members': [currentUser.uid], // The creator is the first member
+        'members': [currentUser.uid],
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // Navigate back after successful creation
       if (mounted) {
-        Navigator.pop(context);
+        setState(() => _isLoading = false);
+
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) {
+            return AlertDialog(
+              title: Text(t('success_title')),
+              content: Text(t('success_body')),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.pop(context);
+                  },
+                  child: Text(t('close')),
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.group),
+                  label: Text(t('view_group')),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => GroupSettingsPage(
+                          groupId: newGroupRef.id,
+                          groupData: {
+                            'name': _nameController.text.trim(),
+                            'description': _descriptionController.text.trim(),
+                            'isPublic': _isPublic,
+                            'adminId': currentUser.uid,
+                            'members': [currentUser.uid],
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            );
+          },
+        );
       }
     } catch (e) {
-      // Handle potential errors (e.g., no internet connection)
       print("Error creating group: $e");
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Failed to create group. Please try again.")),
+          SnackBar(content: Text(t('error_creating_group'))),
         );
       }
     }
@@ -73,9 +114,12 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>().language;
+    String t(String key) => CreateGroupTranslations.t(key, lang);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Create a New Group"),
+        title: Text(t('create_group_title')),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -84,45 +128,38 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ✅ Field for the group name
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: "Group Name",
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: t('group_name_label'),
+                  border: const OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a group name.';
+                    return t('group_name_error');
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 16),
-
-              // ✅ Field for the group description
               TextFormField(
                 controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: "Description",
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: t('description_label'),
+                  border: const OutlineInputBorder(),
                 ),
                 maxLines: 3,
               ),
               const SizedBox(height: 16),
-
-              // ✅ Switch for public/private setting
               SwitchListTile(
-                title: const Text("Public Group"),
-                subtitle: const Text("Anyone can find and join this group."),
+                title: Text(t('public_group_label')),
+                subtitle: Text(_isPublic ? t('public_subtitle') : t('private_subtitle')),
                 value: _isPublic,
                 onChanged: (value) {
                   setState(() => _isPublic = value);
                 },
               ),
-
-
-              // ✅ The create button
+              const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _isLoading ? null : _createGroup,
                 style: ElevatedButton.styleFrom(
@@ -130,12 +167,35 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                 ),
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text("Create Group"),
+                    : Text(t('create_group_button')),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+}
+
+// File: lib/l10n/create_group_translations.dart
+
+class CreateGroupTranslations {
+  static String t(String key, String lang) {
+    final Map<String, Map<String, String>> translations = {
+      'create_group_title': {'fr': 'Créer un nouveau groupe', 'en': 'Create a New Group'},
+      'group_name_label': {'fr': 'Nom du groupe', 'en': 'Group Name'},
+      'group_name_error': {'fr': 'Veuillez entrer un nom de groupe.', 'en': 'Please enter a group name.'},
+      'description_label': {'fr': 'Description', 'en': 'Description'},
+      'public_group_label': {'fr': 'Groupe public', 'en': 'Public Group'},
+      'public_subtitle': {'fr': 'Tout le monde peut trouver et rejoindre ce groupe.', 'en': 'Anyone can find and join this group.'},
+      'private_subtitle': {'fr': 'Seuls les membres invités peuvent rejoindre ce groupe.', 'en': 'Only invited members can join this group.'},
+      'create_group_button': {'fr': 'Créer le groupe', 'en': 'Create Group'},
+      'success_title': {'fr': '✅ Groupe créé avec succès', 'en': '✅ Group Created Successfully'},
+      'success_body': {'fr': 'Votre groupe a été créé. Que souhaitez-vous faire maintenant ?', 'en': 'Your group has been created. What would you like to do now?'},
+      'close': {'fr': 'Fermer', 'en': 'Close'},
+      'view_group': {'fr': 'Voir le groupe', 'en': 'View Group'},
+      'error_creating_group': {'fr': 'La création du groupe a échoué. Veuillez réessayer.', 'en': 'Failed to create group. Please try again.'},
+    };
+    return translations[key]?[lang] ?? key;
   }
 }

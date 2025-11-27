@@ -1,5 +1,8 @@
 // Fichier: lib/widgets/question_widget.dart
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';                 // <--- NOUVEL IMPORT
+import '../models/language_provider.dart';                // <--- NOUVEL IMPORT
 import '../services/Bible_service.dart';
 import '../services/audio_service.dart';
 
@@ -33,6 +36,9 @@ class _QuestionWidgetState extends State<QuestionWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // On récupère la langue actuelle
+    final lang = context.watch<LanguageProvider>().language;
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -70,7 +76,7 @@ class _QuestionWidgetState extends State<QuestionWidget> {
             height: 50,
             child: ElevatedButton(
               onPressed: _selectedAnswer != null && !_isAnswered ? _checkAnswer : null,
-              child: const Text("Vérifier"),
+              child: Text(QuestionWidgetTranslations.t('check', lang)), // <--- TRADUIT
             ),
           ),
         ],
@@ -83,5 +89,16 @@ class _QuestionWidgetState extends State<QuestionWidget> {
     if (option == widget.question.correctAnswer) return Colors.green.shade200;
     if (option == _selectedAnswer) return Colors.red.shade200;
     return null;
+  }
+}
+
+// File: lib/l10n/question_widget_translations.dart
+
+class QuestionWidgetTranslations {
+  static String t(String key, String lang) {
+    final Map<String, Map<String, String>> translations = {
+      'check': {'fr': 'Vérifier', 'en': 'Check'},
+    };
+    return translations[key]?[lang] ?? key;
   }
 }

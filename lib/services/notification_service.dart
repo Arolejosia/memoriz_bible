@@ -7,25 +7,61 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+
 class NotificationService {
-  NotificationService._();
-  static final NotificationService instance = NotificationService._();
+  NotificationService._internal();
+  static final NotificationService instance = NotificationService._internal();
+
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
 
+  // Initialisation
   Future<void> init() async {
     tz.initializeTimeZones();
-    try {
-      final name = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(name));
-    } catch (_) {}
 
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosInit = DarwinInitializationSettings(requestAlertPermission: true, requestBadgePermission: true, requestSoundPermission: true);
-    const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
-    await _plugin.initialize(initSettings);
+    const iosInit = DarwinInitializationSettings();
+
+    const settings = InitializationSettings(android: androidInit, iOS: iosInit);
+
+    await _plugin.initialize(settings);
+
+    // Demander les permissions pour Android 13+ et iOS
+    await _plugin
+        .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
+
+    await _plugin
+        .resolvePlatformSpecificImplementation<
+        IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
   }
 
-  /// Programme une notification quotidienne.
+  // Notification immédiate
+  Future<void> showInstant({
+    required String title,
+    required String body,
+  }) async {
+    await _plugin.show(
+      0,
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'memorizbible_channel',
+          'Rappels MemorizBible',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+    );
+  }
+
+  // Notification quotidienne
   Future<void> scheduleDaily({
     required int id,
     required int hour,
@@ -33,24 +69,29 @@ class NotificationService {
     required String title,
     required String body,
   }) async {
-    await cancelAll(); // Annule les anciens rappels
-    final now = tz.TZDateTime.now(tz.local);
-    var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-    if (scheduled.isBefore(now)) {
-      scheduled = scheduled.add(const Duration(days: 1));
-    }
-    const android = AndroidNotificationDetails('daily_channel', 'Rappels quotidiens');
-    const ios = DarwinNotificationDetails();
     await _plugin.zonedSchedule(
-      id, title, body, scheduled,
-      const NotificationDetails(android: android, iOS: ios),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      id,
+      title,
+      body,
+      _nextInstanceOfTime(hour, minute),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'memorizbible_daily_channel',
+          'Rappels Quotidiens',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidAllowWhileIdle: true,
+      uiLocalNotificationDateInterpretation:
+      UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
 
-  /// Programme une notification hebdomadaire pour des jours spécifiques.
+  // Notification hebdomadaire
   Future<void> scheduleWeekly({
     required int hour,
     required int minute,
@@ -58,28 +99,54 @@ class NotificationService {
     required String title,
     required String body,
   }) async {
-    await cancelAll();
-    const android = AndroidNotificationDetails('weekly_channel', 'Rappels hebdomadaires');
-    const ios = DarwinNotificationDetails();
-    const details = NotificationDetails(android: android, iOS: ios);
-
-    for (final day in days) {
-      final now = tz.TZDateTime.now(tz.local);
-      var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-      while (scheduled.weekday != day || scheduled.isBefore(now)) {
-        scheduled = scheduled.add(const Duration(days: 1));
-      }
+    for (var day in days) {
       await _plugin.zonedSchedule(
-        day, title, body, scheduled, details,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        day,
+        title,
+        body,
+        _nextInstanceOfWeekday(day, hour, minute),
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'memorizbible_weekly_channel',
+            'Rappels Hebdomadaires',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidAllowWhileIdle: true,
+        uiLocalNotificationDateInterpretation:
+        UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
       );
     }
   }
 
-  Future<void> cancelAll() => _plugin.cancelAll();
+  Future<void> cancelAll() async {
+    await _plugin.cancelAll();
+  }
+
+  // Helpers
+  tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduled =
+    tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    if (scheduled.isBefore(now)) {
+      scheduled = scheduled.add(const Duration(days: 1));
+    }
+    return scheduled;
+  }
+
+  tz.TZDateTime _nextInstanceOfWeekday(int weekday, int hour, int minute) {
+    tz.TZDateTime scheduled = _nextInstanceOfTime(hour, minute);
+    while (scheduled.weekday != weekday) {
+      scheduled = scheduled.add(const Duration(days: 1));
+    }
+    return scheduled;
+  }
 }
+
 
 class ThemeProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system; // priorité au système par défaut

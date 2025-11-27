@@ -1,35 +1,54 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_file.dart';
 import 'package:memoriz_bible/screens/core/welcome_page.dart';
+import 'package:memoriz_bible/services/bible_validation_service.dart';
 import 'package:memoriz_bible/services/feedback_overlay.dart';
 import 'package:memoriz_bible/services/notification_service.dart';
-
 import 'package:provider/provider.dart';
 import 'Bibliotheque.dart';
-
-
-
+import 'models/language_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(); // indispensable
+  await Firebase.initializeApp();
   await NotificationService.instance.init();
 
 
   runApp(
-    // Utilisez MultiProvider pour gérer l'utilisateur et la bibliothèque
     MultiProvider(
       providers: [
-        // Ce provider fournit l'état de connexion (User ou null)
+        // Provider pour l'authentification / Provider for authentication
         StreamProvider<User?>.value(
           value: FirebaseAuth.instance.authStateChanges(),
           initialData: null,
         ),
-        // Ce provider REÇOIT l'utilisateur et CRÉE la VerseLibrary avec le bon ID
-        ChangeNotifierProxyProvider<User?, VerseLibrary>(
-          create: (_) => VerseLibrary(null), // Création initiale avec un utilisateur nul
-          update: (_, user, previousLibrary) => VerseLibrary(user?.uid),
+
+        // 👇 MODIFIÉ : LanguageProvider doit être AVANT VerseLibrary
+        // MODIFIED: LanguageProvider must be BEFORE VerseLibrary
+        ChangeNotifierProvider(
+          create: (_) => LanguageProvider(),
+        ),
+
+        // 👇 MODIFIÉ : VerseLibrary avec support bilingue
+        // MODIFIED: VerseLibrary with bilingual support
+        ChangeNotifierProxyProvider2<User?, LanguageProvider, VerseLibrary>(
+          create: (context) {
+            final user = context.read<User?>();
+            final language = context.read<LanguageProvider>().language;
+            return VerseLibrary(user?.uid, language: language);
+          },
+          update: (context, user, languageProvider, previousLibrary) {
+            // Recrée VerseLibrary quand l'utilisateur OU la langue change
+            // Recreate VerseLibrary when user OR language changes
+            return VerseLibrary(user?.uid, language: languageProvider.language);
+          },
+        ),
+
+        // ThemeProvider
+        ChangeNotifierProvider(
+          create: (_) => ThemeProvider(),
         ),
       ],
       child: const MyApp(),
@@ -42,56 +61,73 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
-      child: Consumer<ThemeProvider>(
-        builder: (context, themeProvider, child) {
+    // 👇 AJOUTÉ : Attendre l'initialisation de la langue
+    // ADDED: Wait for language initialization
+    return Consumer2<ThemeProvider, LanguageProvider>(
+      builder: (context, themeProvider, languageProvider, child) {
+        // Afficher un écran de chargement pendant l'initialisation
+        // Show loading screen during initialization
+        if (!languageProvider.isInitialized) {
           return MaterialApp(
-            title: 'Memoriz Bible',
             debugShowCheckedModeBanner: false,
             theme: futuristicLightTheme,
             darkTheme: futuristicDarkTheme,
-            themeMode: themeProvider.themeMode, // system prioritaire
-            home:  WelcomePage(),
+            themeMode: themeProvider.themeMode,
+            home: const Scaffold(
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Chargement... / Loading...'),
+                  ],
+                ),
+              ),
+            ),
           );
-        },
-      ),
+        }
+
+        return MaterialApp(
+          title: 'Memoriz Bible',
+          debugShowCheckedModeBanner: false,
+          theme: futuristicLightTheme,
+          darkTheme: futuristicDarkTheme,
+          themeMode: themeProvider.themeMode,
+          home: WelcomePage(),
+        );
+      },
     );
-
-
-
   }
-
-
-
 }
- ThemeData futuristicLightTheme = ThemeData(
+
+ThemeData futuristicLightTheme = ThemeData(
   brightness: Brightness.light,
-  scaffoldBackgroundColor: const Color(0xFFF5F7FA), // gris très clair futuriste
-  primaryColor: const Color(0xFF2962FF), // bleu techno principal
+  scaffoldBackgroundColor: const Color(0xFFF5F7FA),
+  primaryColor: const Color(0xFF2962FF),
   colorScheme: ColorScheme.fromSeed(
     seedColor: const Color(0xFF2962FF),
-    primary: const Color(0xFF2962FF),  // bleu royal
-    secondary: const Color(0xFF00E5FF), // bleu néon
-    tertiary: const Color(0xFF18FFFF),  // cyan lumineux
+    primary: const Color(0xFF2962FF),
+    secondary: const Color(0xFF00E5FF),
+    tertiary: const Color(0xFF18FFFF),
     background: const Color(0xFFF5F7FA),
     brightness: Brightness.light,
   ),
   textTheme: const TextTheme(
     bodyLarge: TextStyle(
-      color: Color(0xFF212121), // texte noir/gris foncé
+      color: Color(0xFF212121),
       fontSize: 16,
     ),
     titleLarge: TextStyle(
       fontSize: 22,
       fontWeight: FontWeight.bold,
       letterSpacing: 1.2,
-      color: Color(0xFF2962FF), // titres bleus
+      color: Color(0xFF2962FF),
     ),
     headlineLarge: TextStyle(
       fontSize: 28,
       fontWeight: FontWeight.w900,
-      color: Color(0xFF00E5FF), // effet néon
+      color: Color(0xFF00E5FF),
       shadows: [
         Shadow(color: Color(0xFF2962FF), blurRadius: 12),
       ],
@@ -169,10 +205,11 @@ class MyApp extends StatelessWidget {
     space: 16,
   ),
 );
+
 ThemeData futuristicDarkTheme = ThemeData(
   brightness: Brightness.dark,
-  scaffoldBackgroundColor: const Color(0xFF0D1117), // gris-noir profond
-  primaryColor: const Color(0xFF00E5FF), // bleu néon
+  scaffoldBackgroundColor: const Color(0xFF0D1117),
+  primaryColor: const Color(0xFF00E5FF),
   colorScheme: ColorScheme.dark(
     primary: const Color(0xFF00E5FF),
     secondary: const Color(0xFF2962FF),
@@ -181,19 +218,19 @@ ThemeData futuristicDarkTheme = ThemeData(
   ),
   textTheme: const TextTheme(
     bodyLarge: TextStyle(
-      color: Color(0xFFEAEAEA), // texte gris clair
+      color: Color(0xFFEAEAEA),
       fontSize: 16,
     ),
     titleLarge: TextStyle(
       fontSize: 22,
       fontWeight: FontWeight.bold,
       letterSpacing: 1.2,
-      color: Color(0xFF00E5FF), // bleu néon pour les titres
+      color: Color(0xFF00E5FF),
     ),
     headlineLarge: TextStyle(
       fontSize: 30,
       fontWeight: FontWeight.w900,
-      color: Color(0xFF18FFFF), // cyan lumineux
+      color: Color(0xFF18FFFF),
       shadows: [
         Shadow(color: Color(0xFF00E5FF), blurRadius: 18),
       ],
@@ -269,5 +306,3 @@ ThemeData futuristicDarkTheme = ThemeData(
     space: 16,
   ),
 );
-
-
