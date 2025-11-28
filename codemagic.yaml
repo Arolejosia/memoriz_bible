@@ -17,10 +17,6 @@ workflows:
       android_signing:
         - memorizbible_keystore
       
-      # Intégrations
-      integrations:
-        app_store_connect: codemagic
-
       vars:
         # iOS
         XCODE_WORKSPACE: "Runner.xcworkspace"
@@ -128,7 +124,7 @@ workflows:
 
       # Upload automatique sur TestFlight
       app_store_connect:
-        # Codemagic utilise automatiquement l'API key configurée dans les Team integrations
+        auth: integration
         submit_to_testflight: true
         submit_to_app_store: false
 
@@ -150,10 +146,6 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.ulrichjosia.memorizbible
-
-      # Intégrations
-      integrations:
-        app_store_connect: codemagic
 
       vars:
         XCODE_WORKSPACE: "Runner.xcworkspace"
@@ -228,6 +220,7 @@ workflows:
 
       # Upload automatique sur TestFlight
       app_store_connect:
+        auth: integration
         submit_to_testflight: true
         submit_to_app_store: false
 
