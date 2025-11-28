@@ -126,7 +126,7 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 flutter_native_splash:
   color: "#FFF8DC"
-  image: assets/logoMem.png
+  image: assets/ange.png
   android: true
   ios: true
   web: true
@@ -135,5 +135,6 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/ange.png" # Couleur de fond de votre choix
+  remove_alpha_ios: true
   adaptive_icon_foreground: "assets/ange.png"
   # Pour iOS, l'icône doit avoir du padding intégré dans l'image
