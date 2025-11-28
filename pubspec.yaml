@@ -134,6 +134,6 @@ flutter_native_splash:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/logoMem.png" # Couleur de fond de votre choix
-  adaptive_icon_foreground: "assets/logoMem.png"
+  image_path: "assets/ange.png" # Couleur de fond de votre choix
+  adaptive_icon_foreground: "assets/ange.png"
   # Pour iOS, l'icône doit avoir du padding intégré dans l'image
