@@ -274,7 +274,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - damgnejosia@gmail.com
+          - aroletella@gmail.com
         notify:
           success: true
           failure: true
