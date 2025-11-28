@@ -11,7 +11,7 @@ workflows:
       # Configuration iOS
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.example.memorizBible
+        bundle_identifier: com.ulrichjosia.memorizbible
       
       # Configuration Android
       android_signing:
@@ -146,7 +146,7 @@ workflows:
     environment:
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.example.memorizBible
+        bundle_identifier: com.ulrichjosia.memorizbible
       
       vars:
         XCODE_WORKSPACE: "Runner.xcworkspace"
@@ -270,7 +270,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - damgnearole@icloud.com
+          - aroletella@gmail.com
         notify:
           success: true
           failure: true
