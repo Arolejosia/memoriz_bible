@@ -8,7 +8,7 @@ workflows:
     instance_type: mac_mini_m2
     
     integrations:
-      app_store_connect: codemagic
+      app_store_connect: Codemagic
 
     environment:
       # Configuration iOS
@@ -146,7 +146,7 @@ workflows:
     instance_type: mac_mini_m2
 
     integrations:
-      app_store_connect: codemagic
+      app_store_connect: Codemagic
 
     environment:
       ios_signing:
@@ -219,7 +219,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - damgnejosia@gmail.com
+          - aroletella@gmail.com
         notify:
           success: true
           failure: true
