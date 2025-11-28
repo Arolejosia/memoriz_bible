@@ -17,28 +17,32 @@ workflows:
       android_signing:
         - memorizbible_keystore
       
+      # Intégrations
+      integrations:
+        app_store_connect: codemagic
+
       vars:
         # iOS
         XCODE_WORKSPACE: "Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
         APPLE_TEAM_ID: "W6M3PAXV6L"
-        
+
         # Android
         PACKAGE_NAME: "com.ulrich_josia.memoriz_bible"
-        
+
         # Version
         APP_VERSION: "1.0.0"
-      
+
       flutter: stable
       xcode: latest
       cocoapods: default
-    
+
     cache:
       cache_paths:
         - $HOME/.pub-cache
         - $HOME/Library/Caches/CocoaPods
         - ios/Pods
-    
+
     scripts:
       - name: "🔄 Clean project"
         script: |
@@ -47,7 +51,7 @@ workflows:
       - name: "📦 Get Flutter dependencies"
         script: |
           flutter pub get
-      
+
       # ============ iOS BUILD ============
       - name: "📱 Create iOS Export Options"
         script: |
@@ -86,7 +90,7 @@ workflows:
             --build-name=$APP_VERSION \
             --build-number=$BUILD_NUMBER \
             --export-options-plist=/Users/builder/export_options.plist
-      
+
       # ============ ANDROID BUILD ============
       - name: "🔧 Set up Android local.properties"
         script: |
@@ -103,7 +107,7 @@ workflows:
           flutter build appbundle --release \
             --build-name=$APP_VERSION \
             --build-number=$BUILD_NUMBER
-    
+
     artifacts:
       # iOS
       - build/ios/ipa/*.ipa
@@ -113,7 +117,7 @@ workflows:
       # Logs
       - build/app/outputs/mapping/release/mapping.txt
       - /tmp/xcodebuild_logs/*.log
-    
+
     publishing:
       email:
         recipients:
@@ -121,7 +125,7 @@ workflows:
         notify:
           success: true
           failure: true
-      
+
       # Upload automatique sur TestFlight
       app_store_connect:
         # Codemagic utilise automatiquement l'API key configurée dans les Team integrations
@@ -146,6 +150,10 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.ulrichjosia.memorizbible
+
+      # Intégrations
+      integrations:
+        app_store_connect: codemagic
 
       vars:
         XCODE_WORKSPACE: "Runner.xcworkspace"
