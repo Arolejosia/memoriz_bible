@@ -296,7 +296,7 @@ class _VerseDetailPageState extends State<VerseDetailPage> {
       print(t('step_success_next_game', params: {'nextGameMode': nextGameMode}));
       _navigateToGame(nextGameMode);
     } else {
-      print(t('journey_complete'));
+      print(t('journey_completed'));
     }
   }
 
