@@ -59,8 +59,8 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBORzI5-UmrnSY0hDJMNXtVXB_dpNyP9Fc',
-    appId: '1:996341534126:ios:PLACEHOLDER170c3f',
+    apiKey: 'AIzaSyBS7Yxx8tkwT56NzcskRcrnkS0JVX3l0B4',
+    appId: '1:996341534126:ios:1acf875be6475906170c3f',
     messagingSenderId: '996341534126',
     projectId: 'memorizbible',
     databaseURL: 'https://memorizbible-default-rtdb.firebaseio.com',
