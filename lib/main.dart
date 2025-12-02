@@ -8,11 +8,14 @@ import 'package:memoriz_bible/services/feedback_overlay.dart';
 import 'package:memoriz_bible/services/notification_service.dart';
 import 'package:provider/provider.dart';
 import 'Bibliotheque.dart';
+import 'firebase_options.dart';
 import 'models/language_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   await NotificationService.instance.init();
 
 
