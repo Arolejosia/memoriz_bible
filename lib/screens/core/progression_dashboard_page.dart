@@ -86,7 +86,20 @@ class _ProgressionDashboardPageState extends State<ProgressionDashboardPage> {
       final String jsonString = await rootBundle.loadString('assets/segond_1910.json');
       final corrected = '[' + jsonString.replaceAll('}{', '},{') + ']';
       final List<dynamic> data = json.decode(corrected);
-      final Set<String> livresUniquesFr = data.map((item) => item['book_name'] as String).toSet();
+
+      // 🆕 Fonction de normalisation
+      String normalizeBookName(String bookName) {
+        final normalizations = {
+          'Psaumes': 'Psaume',
+          // Ajoutez d'autres normalisations si besoin
+        };
+        return normalizations[bookName] ?? bookName;
+      }
+
+      // ✅ Normaliser puis créer le Set
+      final Set<String> livresUniquesFr = data
+          .map((item) => normalizeBookName(item['book_name'] as String))
+          .toSet();
 
       if (mounted) {
         // ✅ Traduire tous les livres dans la langue actuelle
@@ -135,7 +148,7 @@ class _ProgressionDashboardPageState extends State<ProgressionDashboardPage> {
           'Genèse', 'Exode', 'Lévitique', 'Nombres', 'Deutéronome',
           'Josué', 'Juges', 'Ruth', '1 Samuel', '2 Samuel',
           '1 Rois', '2 Rois', '1 Chroniques', '2 Chroniques',
-          'Esdras', 'Néhémie', 'Esther', 'Job', 'Psaumes',
+          'Esdras', 'Néhémie', 'Esther', 'Job', 'Psaume',  // ✅ Changé ici
           'Proverbes', 'Ecclésiaste', 'Cantique', 'Ésaïe', 'Jérémie',
           'Lamentations', 'Ézéchiel', 'Daniel', 'Osée', 'Joël',
           'Amos', 'Abdias', 'Jonas', 'Michée', 'Nahum',

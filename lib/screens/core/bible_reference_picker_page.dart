@@ -55,7 +55,7 @@ class _BibleReferencePickerPageState extends State<BibleReferencePickerPage> {
     'Josué', 'Juges', 'Ruth', '1 Samuel', '2 Samuel',
     '1 Rois', '2 Rois', '1 Chroniques', '2 Chroniques',
     'Esdras', 'Néhémie', 'Esther', 'Job',
-    'Psaumes', 'Proverbes', 'Ecclésiaste', 'Cantique',
+    'Psaume', 'Proverbes', 'Ecclésiaste', 'Cantique',
     'Ésaïe', 'Jérémie', 'Lamentations', 'Ézéchiel', 'Daniel',
     'Osée', 'Joël', 'Amos', 'Abdias', 'Jonas', 'Michée',
     'Nahum', 'Habacuc', 'Sophonie', 'Aggée', 'Zacharie', 'Malachie',

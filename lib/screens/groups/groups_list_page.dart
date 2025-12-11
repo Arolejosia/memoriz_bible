@@ -1,4 +1,6 @@
 // lib/screens/groups/groups_list_page.dart
+// ✅ VERSION CORRIGÉE : Affiche le vrai nom quand quelqu'un rejoint
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../models/language_provider.dart';
 import 'chat_page.dart';
 import 'create_group_page.dart';
+import 'invitations_page.dart';
 
 class GroupsListPage extends StatefulWidget {
   const GroupsListPage({super.key});
@@ -18,17 +21,18 @@ class GroupsListPage extends StatefulWidget {
 class _GroupsListPageState extends State<GroupsListPage> {
   final User? currentUser = FirebaseAuth.instance.currentUser;
   String _discoverSearchQuery = '';
+  int _pendingInvitationsCount = 0;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkForInvitations();
+      _listenToInvitations();
     });
   }
 
   String t(String key, {Map<String, String>? params}) {
-    // Use read here as it's often called outside the build method
     final lang = context.read<LanguageProvider>().language;
     return GroupsListTranslations.t(key, lang, params: params);
   }
@@ -52,23 +56,87 @@ class _GroupsListPageState extends State<GroupsListPage> {
         SnackBar(
           content: Text(message),
           backgroundColor: Colors.blue,
-          duration: const Duration(seconds: 4),
+          duration: const Duration(seconds: 6),
+          action: SnackBarAction(
+            label: t('view_invitations'),
+            textColor: Colors.white,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const InvitationsPage()),
+              );
+            },
+          ),
         ),
       );
     }
+  }
+
+  void _listenToInvitations() {
+    if (currentUser == null) return;
+
+    FirebaseFirestore.instance
+        .collection('invitations')
+        .where('invitedUserId', isEqualTo: currentUser!.uid)
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          _pendingInvitationsCount = snapshot.docs.length;
+        });
+      }
+    });
+  }
+
+  // ✅ NOUVELLE FONCTION : Récupérer le nom complet de l'utilisateur
+  Future<String> _getUserDisplayName(String userId) async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+
+      if (userDoc.exists) {
+        final data = userDoc.data();
+
+        // Essayer dans cet ordre : fullName, username, email, ou "Utilisateur"
+        final fullName = data?['fullName'] as String?;
+        final username = data?['username'] as String?;
+        final email = data?['email'] as String?;
+
+        if (fullName != null && fullName.isNotEmpty) {
+          return fullName;
+        } else if (username != null && username.isNotEmpty) {
+          return username;
+        } else if (email != null && email.isNotEmpty) {
+          // Extraire le nom avant le @
+          return email.split('@').first;
+        }
+      }
+    } catch (e) {
+      print('❌ Erreur récupération nom utilisateur: $e');
+    }
+
+    return t('a_member');  // Fallback
   }
 
   Future<void> _joinGroup(String groupId, String groupName) async {
     if (currentUser == null) return;
     final groupRef = FirebaseFirestore.instance.collection('groups').doc(groupId);
 
+    // ✅ MODIFICATION : Récupérer le vrai nom AVANT d'ajouter le message
+    final userDisplayName = await _getUserDisplayName(currentUser!.uid);
+
+    print('👤 Utilisateur qui rejoint: $userDisplayName');
+
     await groupRef.update({
       'members': FieldValue.arrayUnion([currentUser!.uid]),
     });
 
-    final username = currentUser!.displayName ?? t('a_member');
+    // ✅ MODIFICATION : Utiliser le vrai nom dans le message
     await groupRef.collection('messages').add({
-      'text': t('user_joined_group', params: {'username': username}),
+      'text': t('user_joined_group', params: {'username': userDisplayName}),
       'type': 'system',
       'timestamp': FieldValue.serverTimestamp(),
       'senderId': 'system',
@@ -95,7 +163,6 @@ class _GroupsListPageState extends State<GroupsListPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Use watch here to rebuild tabs if language changes
     final lang = context.watch<LanguageProvider>().language;
     String t(String key) => GroupsListTranslations.t(key, lang);
 
@@ -104,6 +171,47 @@ class _GroupsListPageState extends State<GroupsListPage> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(t('groups_title')),
+          actions: [
+            Stack(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.mail_outline),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const InvitationsPage()),
+                    );
+                  },
+                  tooltip: t('my_invitations'),
+                ),
+                if (_pendingInvitationsCount > 0)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      child: Text(
+                        _pendingInvitationsCount > 9 ? '9+' : '$_pendingInvitationsCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
           bottom: TabBar(
             tabs: [
               Tab(text: t('my_groups_tab'), icon: const Icon(Icons.group)),
@@ -241,8 +349,7 @@ class _GroupsListPageState extends State<GroupsListPage> {
   }
 }
 
-// File: lib/l10n/groups_list_translations.dart
-
+// Translations
 class GroupsListTranslations {
   static String t(String key, String lang, {Map<String, String>? params}) {
     final Map<String, Map<String, String>> translations = {
@@ -254,11 +361,13 @@ class GroupsListTranslations {
         'fr': 'Vous avez {count} invitations en attente',
         'en': 'You have {count} pending invitations'
       },
+      'view_invitations': {'fr': 'Voir', 'en': 'View'},
+      'my_invitations': {'fr': 'Mes invitations', 'en': 'My Invitations'},
       'user_joined_group': {
         'fr': '{username} a rejoint le groupe.',
         'en': '{username} joined the group.'
       },
-      'a_member': {'fr': 'Un membre', 'en': 'A member'},
+      'a_member': {'fr': 'Un utilisateur', 'en': 'A user'},
       'system': {'fr': 'Système', 'en': 'System'},
       'you_joined_group': {
         'fr': 'Vous avez rejoint le groupe !',

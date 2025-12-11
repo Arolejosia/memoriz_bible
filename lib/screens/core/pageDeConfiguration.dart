@@ -86,7 +86,7 @@ class BookTranslations {
     'Néhémie': {'fr': 'Néhémie', 'en': 'Nehemiah'},
     'Esther': {'fr': 'Esther', 'en': 'Esther'},
     'Job': {'fr': 'Job', 'en': 'Job'},
-    'Psaumes': {'fr': 'Psaumes', 'en': 'Psalms'},
+    'Psaume': {'fr': 'Psaume', 'en': 'Psalms'},
     'Proverbes': {'fr': 'Proverbes', 'en': 'Proverbs'},
     'Ecclésiaste': {'fr': 'Ecclésiaste', 'en': 'Ecclesiastes'},
     'Cantique': {'fr': 'Cantique', 'en': 'Song of Solomon'},
@@ -225,24 +225,39 @@ class _PageDeJeuPrincipaleState extends State<PageDeJeuPrincipale> {
       final String jsonString = await rootBundle.loadString('assets/segond_1910.json');
       final corrected = '[' + jsonString.replaceAll('}{', '},{') + ']';
       final List<dynamic> data = json.decode(corrected);
-      final Set<String> livresUniquesFr = data.map((item) => item['book_name'] as String).toSet();
 
       if (mounted) {
         final lang = context.read<LanguageProvider>().language;
         final allBooksLabel = FreeGameTranslations.t('all_books', lang);
 
-        // Translate book names to current language
-        final livresTranslated = livresUniquesFr.map((bookFr) {
-          return BookTranslations.translate(bookFr, lang);
-        }).toList()..sort();
+        // 🆕 Fonction de normalisation
+        String normalizeBookName(String bookName) {
+          final normalizations = {
+            'Psaumes': 'Psaume',
+            // Ajoutez d'autres normalisations si besoin
+          };
+          return normalizations[bookName] ?? bookName;
+        }
+
+        // ✅ 1. Normaliser les noms de livres
+        final Set<String> livresUniquesFr = data
+            .map((item) => normalizeBookName(item['book_name'] as String))
+            .toSet();
+
+        // ✅ 2. Traduire vers la langue actuelle
+        final livresTranslated = livresUniquesFr
+            .map((bookFr) => BookTranslations.translate(bookFr, lang))
+            .toList()
+          ..sort();
 
         // Set default book (John/Jean)
         final defaultBook = BookTranslations.translate("Jean", lang);
 
         setState(() {
           books = [allBooksLabel, ...livresTranslated];
-          // Make sure selectedBook is in the list
-          selectedBook = books.contains(defaultBook) ? defaultBook : (books.length > 1 ? books[1] : null);
+          selectedBook = books.contains(defaultBook)
+              ? defaultBook
+              : (books.length > 1 ? books[1] : null);
           _isLoadingBooks = false;
         });
       }
@@ -259,7 +274,7 @@ class _PageDeJeuPrincipaleState extends State<PageDeJeuPrincipale> {
           'Genèse', 'Exode', 'Lévitique', 'Nombres', 'Deutéronome',
           'Josué', 'Juges', 'Ruth', '1 Samuel', '2 Samuel',
           '1 Rois', '2 Rois', '1 Chroniques', '2 Chroniques',
-          'Esdras', 'Néhémie', 'Esther', 'Job', 'Psaumes',
+          'Esdras', 'Néhémie', 'Esther', 'Job', 'Psaume',  // ✅ Déjà "Psaume" ici
           'Proverbes', 'Ecclésiaste', 'Cantique', 'Ésaïe', 'Jérémie',
           'Lamentations', 'Ézéchiel', 'Daniel', 'Osée', 'Joël',
           'Amos', 'Abdias', 'Jonas', 'Michée', 'Nahum',
@@ -272,15 +287,17 @@ class _PageDeJeuPrincipaleState extends State<PageDeJeuPrincipale> {
           '1 Jean', '2 Jean', '3 Jean', 'Jude', 'Apocalypse'
         ];
 
-        final livresTranslated = fallbackBooksFr.map((bookFr) {
-          return BookTranslations.translate(bookFr, lang);
-        }).toList();
+        final livresTranslated = fallbackBooksFr
+            .map((bookFr) => BookTranslations.translate(bookFr, lang))
+            .toList();
 
         final defaultBook = BookTranslations.translate("Jean", lang);
 
         setState(() {
           books = [allBooksLabel, ...livresTranslated];
-          selectedBook = books.contains(defaultBook) ? defaultBook : (books.length > 1 ? books[1] : null);
+          selectedBook = books.contains(defaultBook)
+              ? defaultBook
+              : (books.length > 1 ? books[1] : null);
           _isLoadingBooks = false;
         });
       }

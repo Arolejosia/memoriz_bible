@@ -205,15 +205,15 @@ class VerseLibrary extends ChangeNotifier {
     } else {
       return [
         {"category": "Les Fondamentaux de la Foi", "verses": ["Jean 3:16", "Romains 3:23", "Romains 6:23", "Éphésiens 2:8-9", "Jean 14:6"]},
-        {"category": "Réconfort et Paix", "verses": ["Psaumes 23:1-4", "Philippiens 4:6-7", "Matthieu 11:28", "Jean 14:27", "Ésaïe 41:10"]},
-        {"category": "Confiance en Dieu", "verses": ["Proverbes 3:5-6", "Jérémie 29:11", "Josué 1:9", "Psaumes 37:5", "Hébreux 13:5"]},
+        {"category": "Réconfort et Paix", "verses": ["Psaume 23:1-4", "Philippiens 4:6-7", "Matthieu 11:28", "Jean 14:27", "Ésaïe 41:10"]},
+        {"category": "Confiance en Dieu", "verses": ["Proverbes 3:5-6", "Jérémie 29:11", "Josué 1:9", "Psaume 37:5", "Hébreux 13:5"]},
         {"category": "Amour et Relations", "verses": ["1 Corinthiens 13:4-7", "Jean 13:34-35", "1 Jean 4:7-8", "Éphésiens 4:2-3", "Colossiens 3:13-14"]},
         {"category": "Espoir et Encouragement", "verses": ["Romains 8:28", "Ésaïe 40:31", "2 Corinthiens 12:9", "Psaumes 121:1-2", "Hébreux 11:1"]},
-        {"category": "Force dans l'Épreuve", "verses": ["Philippiens 4:13", "Ésaïe 40:29-31", "2 Timothée 1:7", "Psaumes 46:1", "1 Pierre 5:7"]},
+        {"category": "Force dans l'Épreuve", "verses": ["Philippiens 4:13", "Ésaïe 40:29-31", "2 Timothée 1:7", "Psaume 46:1", "1 Pierre 5:7"]},
         {"category": "La Prière", "verses": ["Matthieu 6:9-13", "1 Thessaloniciens 5:16-18", "Marc 11:24", "Jérémie 33:3", "Philippiens 4:6"]},
-        {"category": "La Sagesse", "verses": ["Jacques 1:5", "Proverbes 1:7", "Proverbes 9:10", "Psaumes 119:105", "Colossiens 3:16"]},
+        {"category": "La Sagesse", "verses": ["Jacques 1:5", "Proverbes 1:7", "Proverbes 9:10", "Psaume 119:105", "Colossiens 3:16"]},
         {"category": "La Vie Chrétienne", "verses": ["Galates 2:20", "Matthieu 5:14-16", "Romains 12:1-2", "2 Corinthiens 5:17", "Colossiens 3:23"]},
-        {"category": "Promesses de Dieu", "verses": ["Deutéronome 31:6", "Psaumes 91:1-2", "Jean 10:28-29", "2 Corinthiens 1:20", "Apocalypse 21:4"]},
+        {"category": "Promesses de Dieu", "verses": ["Deutéronome 31:6", "Psaume 91:1-2", "Jean 10:28-29", "2 Corinthiens 1:20", "Apocalypse 21:4"]},
       ];
     }
   }
@@ -256,43 +256,76 @@ class VerseLibrary extends ChangeNotifier {
     required String gameMode,
     required int score,
   }) async {
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    print('🔍 [onGameFinished] DÉBUT');
+    print('   verse.id: ${verse.id}');
+    print('   verse.progressLevel: ${verse.progressLevel}');
+    print('   gameMode: $gameMode');
+    print('   score: $score');
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
     final int minScoreToPass = 70;
-    final gameSequence = ["qcm", "texte_a_trous", "ordre", "dictee", "recitation"];
+    final gameSequence = ["qcm", "texte_a_trous", "ordre", "dictee", "recitation",];
 
     final updatedScores = Map<String, int>.from(verse.scores);
     final updatedFailedAttempts = Map<String, int>.from(verse.failedAttempts);
 
     updatedScores[gameMode] = score;
 
+    print('📊 [onGameFinished] Scores après ajout:');
+    updatedScores.forEach((key, value) {
+      print('   $key: $value');
+    });
+
     int newProgressLevel = verse.progressLevel;
     VerseStatus newStatus = verse.status;
 
     if (gameMode == "recitation" && score < minScoreToPass) {
+      print('⚠️ [onGameFinished] Récitation ratée');
       int currentFails = (updatedFailedAttempts['recitation'] ?? 0) + 1;
       updatedFailedAttempts['recitation'] = currentFails;
 
       if (currentFails >= 3) {
+        print('❌ [onGameFinished] 3 échecs → Retour au jeu 3');
         newProgressLevel = 2;
         updatedFailedAttempts['recitation'] = 0;
         updatedScores.remove('dictee');
         updatedScores.remove('recitation');
       }
     } else if (score >= minScoreToPass) {
+      print('✅ [onGameFinished] Jeu réussi (score >= $minScoreToPass)');
       updatedFailedAttempts[gameMode] = 0;
 
-      int currentLevel = 0;
-      for (final game in gameSequence) {
-        if ((updatedScores[game] ?? 0) >= minScoreToPass) {
-          currentLevel++;
-        } else {
-          break;
+      // ✅ NOUVELLE LOGIQUE
+      int currentGameIndex = gameSequence.indexOf(gameMode);
+      print('🎯 [onGameFinished] Index du jeu: $currentGameIndex');
+      print('🎯 [onGameFinished] progressLevel actuel: ${verse.progressLevel}');
+
+      if (currentGameIndex == verse.progressLevel) {
+        print('✅ [onGameFinished] C\'est le jeu attendu → INCRÉMENTER');
+        newProgressLevel = verse.progressLevel + 1;
+        print('   newProgressLevel: $newProgressLevel');
+
+        if (newProgressLevel >= gameSequence.length) {
+          print('🎉 [onGameFinished] PARCOURS TERMINÉ !');
+          newProgressLevel = gameSequence.length;
+          newStatus = VerseStatus.mastered;
         }
+      } else {
+        print('⚠️ [onGameFinished] Jeu refait → GARDER progressLevel');
+        newProgressLevel = verse.progressLevel;
+        print('   newProgressLevel (inchangé): $newProgressLevel');
       }
-      newProgressLevel = currentLevel;
-      if (newProgressLevel == gameSequence.length) {
-        newStatus = VerseStatus.mastered;
-      }
+    } else {
+      print('❌ [onGameFinished] Jeu raté (score < $minScoreToPass)');
+      print('   progressLevel reste: ${verse.progressLevel}');
     }
+
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    print('💾 [onGameFinished] Mise à jour Firebase:');
+    print('   newProgressLevel: $newProgressLevel');
+    print('   newStatus: ${newStatus.name}');
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     final docRef = FirebaseFirestore.instance.collection('users/$userId/verses').doc(verse.id);
     await docRef.update({
@@ -303,8 +336,14 @@ class VerseLibrary extends ChangeNotifier {
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
+    print('✅ [onGameFinished] Firebase mis à jour');
+    print('🔄 [onGameFinished] Rechargement des données...');
+
     await _loadMyVersesFromFirestore();
     notifyListeners();
+
+    print('✅ [onGameFinished] FIN');
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   }
 
   Future<void> removeVerse(String verseId) async {

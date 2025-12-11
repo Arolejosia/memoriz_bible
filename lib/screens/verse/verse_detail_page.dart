@@ -1,6 +1,7 @@
 // Fichier : lib/verse_detail_page.dart
-// <--- NOUVEL IMPORT
-import 'package:memoriz_bible/models/language_provider.dart';      // <--- NOUVEL IMPORT
+// ✅ VERSION CORRIGÉE - Logique de fin de parcours complète
+
+import 'package:memoriz_bible/models/language_provider.dart';
 import 'package:memoriz_bible/services/bible_validation_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +17,9 @@ import '../games/TEXTE-TROU/jeu_trous.dart';
 import '../../models/verse_model.dart';
 import '../core/pageDeConfiguration.dart';
 import '../../services/Bible_service.dart';
+import 'package:flutter/foundation.dart';
+
+
 
 class VerseDetailPage extends StatefulWidget {
   final Verse verse;
@@ -39,9 +43,7 @@ class _VerseDetailPageState extends State<VerseDetailPage> {
     _validateVerseOnLoad();
   }
 
-  // Helper pour la traduction
   String t(String key, {Map<String, String>? params}) {
-    // Utilise 'read' car on est dans une fonction, pas dans le build
     final lang = context.read<LanguageProvider>().language;
     return VerseDetailTranslations.t(key, lang, params: params);
   }
@@ -52,7 +54,7 @@ class _VerseDetailPageState extends State<VerseDetailPage> {
       final lang = context.read<LanguageProvider>().language;
       final verseData = await BibleService().getPassageText(
           currentVerse.reference,
-          language: lang // 👈 AJOUTÉ
+          language: lang
       );
       if (mounted) {
         setState(() {
@@ -96,9 +98,7 @@ class _VerseDetailPageState extends State<VerseDetailPage> {
     return await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        // 'context' a accès au provider, pas 'dialogContext' directement
         String tDialog(String key, {Map<String, String>? params}) {
-
           return VerseDetailTranslations.t(key, lang, params: params);
         }
         return AlertDialog(
@@ -119,7 +119,7 @@ class _VerseDetailPageState extends State<VerseDetailPage> {
                   FutureBuilder<List<VerseData>>(
                     future: BibleService().getPassageText(
                         currentVerse.reference,
-                        language: lang // 👈 AJOUTÉ
+                        language: lang
                     ),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: Padding(padding: EdgeInsets.all(32.0), child: CircularProgressIndicator()));
@@ -271,6 +271,7 @@ class _VerseDetailPageState extends State<VerseDetailPage> {
   }
 
   Future<void> _navigateToGame(String gameMode) async {
+    final lang = context.read<LanguageProvider>().language;
     Widget gamePage;
     switch (gameMode) {
       case "qcm": gamePage = QcmGamePage(verse: currentVerse, gameContext: GameContext.progression); break;
@@ -289,16 +290,51 @@ class _VerseDetailPageState extends State<VerseDetailPage> {
     }
   }
 
-  void _launchNextGame() {
+  // ✅ CORRECTION : Logique complète de fin de parcours
+  void _launchNextGame() async {
     int nextGameIndex = currentVerse.progressLevel;
+
     if (nextGameIndex < gameSequence.length) {
+      // Encore des jeux à faire
       String nextGameMode = gameSequence[nextGameIndex];
       print(t('step_success_next_game', params: {'nextGameMode': nextGameMode}));
       _navigateToGame(nextGameMode);
     } else {
-      print(t('journey_completed'));
+      // ✅ TOUS LES JEUX SONT TERMINÉS (progressLevel == 5)
+      print(t('journey_complete'));
+
+      // ✅ METTRE À JOUR LE STATUT EN "MASTERED" DANS FIREBASE
+      if (userId != null && currentVerse.status != VerseStatus.mastered) {
+        try {
+          final docRef = FirebaseFirestore.instance
+              .collection('users/$userId/verses')
+              .doc(currentVerse.id);
+
+          await docRef.update({
+            'status': 'mastered',
+            'updatedAt': FieldValue.serverTimestamp()
+          });
+
+          // Recharger les données depuis Firestore
+          await _refreshVerseDataFromFirestore();
+
+          // Recharger la bibliothèque
+          if (mounted) {
+            await context.read<VerseLibrary>().reloadAllData();
+          }
+
+          // ✅ AFFICHER UN DIALOGUE DE FÉLICITATIONS
+          if (mounted) {
+            _showCompletionDialog();
+          }
+        } catch (e) {
+          print('Erreur lors de la mise à jour du statut mastered: $e');
+        }
+      }
     }
   }
+
+
 
   Future<void> _refreshVerseDataFromFirestore() async {
     final doc = await FirebaseFirestore.instance.collection('users/$userId/verses').doc(currentVerse.id).get();
@@ -309,9 +345,7 @@ class _VerseDetailPageState extends State<VerseDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Utilise 'watch' ici pour que l'UI se reconstruise si la langue change
     final lang = context.watch<LanguageProvider>().language;
-    // Crée une fonction 't' locale qui utilise la langue actuelle
     String t(String key, {Map<String, String>? params}) => VerseDetailTranslations.t(key, lang, params: params);
 
     if (_isValidating) {
@@ -324,12 +358,89 @@ class _VerseDetailPageState extends State<VerseDetailPage> {
       return _buildInvalidVerseScreen(t);
     }
     return Scaffold(
-      appBar: AppBar(title: Text(currentVerse.reference), backgroundColor: Colors.white),
+      appBar: AppBar(
+        title: Text(currentVerse.reference),
+        backgroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bug_report, color: Colors.orange),
+            tooltip: 'Test',
+            onPressed: () => _testJeu5(),  // ← Appel simplifié
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(children: [_buildVerseTextDisplay(), const SizedBox(height: 24), const Divider(), const SizedBox(height: 16), _buildVerseBody(t)]),
       ),
     );
+  }
+  Future<void> _testJeu5() async {
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    print('🧪 TEST JEU 5 - DÉBUT');
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+    if (userId == null) {
+      print('❌ Pas d\'utilisateur connecté');
+      return;
+    }
+
+    try {
+      // Étape 1 : Mettre progressLevel à 4 dans Firebase
+      print('1️⃣ Mise à jour Firebase: progressLevel = 4');
+      await FirebaseFirestore.instance
+          .collection('users/$userId/verses')
+          .doc(currentVerse.id)
+          .update({
+        'progressLevel': 4,
+        'status': 'learning',
+      });
+
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // ✅ CORRECTION : Recharger currentVerse depuis Firebase AVANT onGameFinished
+      print('📖 Rechargement du verset depuis Firebase...');
+      await _refreshVerseDataFromFirestore();
+
+      print('📊 État du verset après rechargement:');
+      print('   progressLevel: ${currentVerse.progressLevel}');
+
+      // Étape 2 : Appeler onGameFinished
+      print('2️⃣ Appel onGameFinished...');
+      await context.read<VerseLibrary>().onGameFinished(
+        verse: currentVerse,  // ← Maintenant currentVerse a progressLevel: 4 ✅
+        gameMode: "recitation",
+        score: 100,
+      );
+
+      // Étape 3 : Attendre
+      print('3️⃣ Attente 500ms...');
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Étape 4 : Recharger
+      print('4️⃣ Rechargement final...');
+      await _refreshVerseDataFromFirestore();
+
+      // Étape 5 : Vérifier
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('📊 RÉSULTAT:');
+      print('   progressLevel: ${currentVerse.progressLevel}');
+      print('   gameSequence.length: ${gameSequence.length}');
+
+      if (currentVerse.progressLevel == 5) {
+        print('   ✅ progressLevel = 5 (CORRECT)');
+      } else {
+        print('   ❌ progressLevel = ${currentVerse.progressLevel} (PROBLÈME!)');
+      }
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+      // Étape 6 : Lancer le jeu suivant
+      print('5️⃣ Appel _launchNextGame()...');
+      _launchNextGame();
+
+    } catch (e) {
+      print('❌ ERREUR: $e');
+    }
   }
 
   Widget _buildInvalidVerseScreen(String Function(String, {Map<String, String>? params}) t) {
@@ -393,6 +504,94 @@ class _VerseDetailPageState extends State<VerseDetailPage> {
                 }
               },
               child: Text(t('delete')),
+            ),
+          ],
+        );
+      },
+    );
+  }
+  // ✅ NOUVEAU : Dialogue de félicitations
+  void _showCompletionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        String tDialog(String key, {Map<String, String>? params}) {
+          final lang = context.read<LanguageProvider>().language;
+          return VerseDetailTranslations.t(key, lang, params: params);
+        }
+        return AlertDialog(
+          title: Column(
+            children: [
+              Icon(Icons.emoji_events, size: 60, color: Colors.amber[700]),
+              const SizedBox(height: 16),
+              Text(
+                '🎉 PARCOURS TERMINÉ !',
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Félicitations ! Vous avez complété toutes les étapes.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.green[300]!),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      currentVerse.reference,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.indigo,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.green[700]),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Verset Maîtrisé !',
+                          style: TextStyle(
+                            color: Colors.green[700],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton.icon(
+              icon: const Icon(Icons.home),
+              label: const Text('Retour au Tableau de Bord'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(); // Fermer le dialogue
+                Navigator.of(context).pop(); // Retourner au dashboard
+              },
             ),
           ],
         );
@@ -512,7 +711,7 @@ class _VerseDetailPageState extends State<VerseDetailPage> {
         child: FutureBuilder<List<VerseData>>(
           future: BibleService().getPassageText(
               currentVerse.reference,
-              language: lang // 👈 AJOUTÉ
+              language: lang
           ),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
@@ -559,7 +758,10 @@ class _VerseDetailPageState extends State<VerseDetailPage> {
     );
   }
 }
+
+
 // File: lib/l10n/verse_detail_translations.dart
+// ✅ AJOUT : Nouvelle traduction
 
 class VerseDetailTranslations {
   static String t(String key, String lang, {Map<String, String>? params}) {
@@ -597,7 +799,7 @@ class VerseDetailTranslations {
       'step_of_5': {'fr': 'Étape {step} sur 5', 'en': 'Step {step} of 5'},
       'continue_progress': {'fr': 'CONTINUER LA PROGRESSION', 'en': 'CONTINUE PROGRESS'},
       'free_play_sandbox': {'fr': 'Jeu libre (Sandbox)', 'en': 'Free Play (Sandbox)'},
-      'verse_mastered': {'fr': 'Verset Connu !', 'en': 'Verse Mastered!'},
+      'verse_mastered': {'fr': 'Verset Maîtrisé !', 'en': 'Verse Mastered!'},
       'congratulations_all_steps': {'fr': 'Félicitations ! Vous avez complété toutes les étapes.', 'en': 'Congratulations! You have completed all the steps.'},
       'practice_again': {'fr': "S'entraîner à nouveau", 'en': 'Practice Again'},
       'progress': {'fr': 'Progression :', 'en': 'Progress:'},
@@ -606,6 +808,8 @@ class VerseDetailTranslations {
       'add_to_library_prompt': {'fr': 'Ajoutez ce verset à votre bibliothèque pour commencer à le mémoriser.', 'en': 'Add this verse to your library to start memorizing it.'},
       'add_to_my_library': {'fr': 'AJOUTER À MA BIBLIOTHÈQUE', 'en': 'ADD TO MY LIBRARY'},
       'verse_added': {'fr': '{ref} ajouté !', 'en': '{ref} added!'},
+      // ✅ NOUVEAU
+      'back_to_dashboard': {'fr': 'Retour au Tableau de Bord', 'en': 'Back to Dashboard'},
     };
 
     String text = translations[key]?[lang] ?? key;
@@ -617,4 +821,3 @@ class VerseDetailTranslations {
     return text;
   }
 }
-

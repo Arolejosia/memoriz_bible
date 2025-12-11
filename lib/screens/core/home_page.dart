@@ -24,11 +24,13 @@ class _HomePageState extends State<HomePage> {
   final User? _user = FirebaseAuth.instance.currentUser;
   String _userName = '';
   bool _isLoading = true;
+  int _pendingInvitationsCount = 0;  // ✅ AJOUT : Compteur d'invitations
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _listenToInvitations();  // ✅ AJOUT : Écouter les invitations
   }
 
   Future<void> _loadUserData() async {
@@ -51,6 +53,24 @@ class _HomePageState extends State<HomePage> {
       print("Erreur lors du chargement des données utilisateur: $e");
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  // ✅ AJOUT : Écouter les invitations en temps réel
+  void _listenToInvitations() {
+    if (_user == null) return;
+
+    FirebaseFirestore.instance
+        .collection('invitations')
+        .where('invitedUserId', isEqualTo: _user!.uid)
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          _pendingInvitationsCount = snapshot.docs.length;
+        });
+      }
+    });
   }
 
   @override
@@ -191,13 +211,15 @@ class _HomePageState extends State<HomePage> {
 
                 const SizedBox(height: 16),
 
-                _buildCardTile(
+                // ✅ MODIFICATION : Bouton "Mes Groupes" avec badge de notification
+                _buildCardTileWithBadge(
                   icon: Icons.group_outlined,
                   title: isEnglish ? "My Groups" : "Mes Groupes",
                   subtitle: isEnglish
                       ? "Chat, share, and learn with your community."
                       : "Discutez, partagez et apprenez avec votre communauté.",
                   color: Colors.teal.shade400,
+                  badgeCount: _pendingInvitationsCount,  // ✅ Badge avec nombre d'invitations
                   onTap: () {
                     Navigator.push(
                       context,
@@ -298,7 +320,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- Carte “accès rapide” ---
+  // --- Carte "accès rapide" ---
   Widget _buildCardTile({
     required IconData icon,
     required String title,
@@ -323,6 +345,95 @@ class _HomePageState extends State<HomePage> {
                 ),
                 padding: const EdgeInsets.all(12),
                 child: Icon(icon, color: color, size: 32),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 18)),
+                    const SizedBox(height: 4),
+                    Text(subtitle,
+                        style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_ios, size: 18, color: Colors.grey),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ✅ NOUVEAU : Carte avec badge de notification
+  Widget _buildCardTileWithBadge({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required int badgeCount,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              // ✅ Stack pour ajouter le badge sur l'icône
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: Icon(icon, color: color, size: 32),
+                  ),
+                  // ✅ Badge de notification
+                  if (badgeCount > 0)
+                    Positioned(
+                      right: -6,
+                      top: -6,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 24,
+                          minHeight: 24,
+                        ),
+                        child: Text(
+                          badgeCount > 9 ? '9+' : '$badgeCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(width: 16),
               Expanded(

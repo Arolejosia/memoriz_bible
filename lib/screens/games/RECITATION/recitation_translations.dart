@@ -161,6 +161,30 @@ class RecitationTranslations {
       'verse_reference': {'fr': 'Référence du verset', 'en': 'Verse reference'},
       'biblical_reference': {'fr': 'Référence biblique', 'en': 'Biblical reference'},
 
+      // 🆕 =========================================================================
+      // 🆕 REFERENCE VERIFICATION (NEW)
+      // 🆕 =========================================================================
+      'one_last_step': {'fr': 'Une dernière étape !', 'en': 'One last step!'},
+      'final_challenge': {'fr': 'Défi final', 'en': 'Final challenge'},
+      'enter_verse_reference': {
+        'fr': 'Entrez la référence du verset que vous venez de réciter :',
+        'en': 'Enter the reference of the verse you just recited:'
+      },
+      'placeholder_reference': {'fr': 'Ex: Jean 3:16', 'en': 'Ex: John 3:16'},
+      'tries_left': {'fr': 'essais restants', 'en': 'tries left'},
+      'correct': {'fr': '✅ Parfait !', 'en': '✅ Perfect!'},
+      'incorrect': {'fr': '❌ Incorrect', 'en': '❌ Incorrect'},
+      'correct_reference_is': {'fr': 'La référence correcte est :', 'en': 'The correct reference is:'},
+      'validate': {'fr': 'Valider', 'en': 'Validate'},
+      'reference_correct_message': {
+        'fr': 'Félicitations ! Vous maîtrisez ce verset !',
+        'en': 'Congratulations! You master this verse!'
+      },
+      'reference_incorrect_try_again': {
+        'fr': 'Réessayez. Vérifiez l\'orthographe et le format.',
+        'en': 'Try again. Check spelling and format.'
+      },
+
       // =========================================================================
       // ERRORS
       // =========================================================================
@@ -198,7 +222,11 @@ class RecitationTranslations {
     return text;
   }
 
-  /// Helper pour obtenir le message d'encouragement basé sur le score
+  // =========================================================================
+  // HELPER METHODS (Unchanged)
+  // =========================================================================
+
+  /// Renvoie un message d'encouragement basé sur le score
   static String getEncouragementMessage(double score, String lang) {
     if (score >= 90.0) return t('excellent_progress', lang);
     if (score >= 70.0) return t('very_good', lang);
@@ -207,7 +235,29 @@ class RecitationTranslations {
     return t('dont_give_up', lang);
   }
 
-  /// Helper pour obtenir le label du score
+  /// Renvoie un conseil basé sur le score et la tentative
+  static String getHintMessage(double score, bool hasPreviousAttempt, String lang) {
+    if (!hasPreviousAttempt) {
+      return t('speak_slowly', lang);
+    }
+    if (score >= 80.0) return t('attention_details', lang);
+    if (score >= 60.0) return t('check_word_order', lang);
+    if (score >= 40.0) return t('check_text', lang);
+    return t('speak_clearly', lang);
+  }
+
+  /// Formatte le nombre d'essais restants avec pluriel approprié
+  static String formatAttemptsRemaining(int remaining, String lang) {
+    if (remaining == 0) {
+      return lang == 'fr' ? 'Plus d\'essais' : 'No attempts left';
+    }
+    if (remaining == 1) {
+      return lang == 'fr' ? '1 essai restant' : '1 attempt left';
+    }
+    return lang == 'fr' ? '$remaining essais restants' : '$remaining attempts left';
+  }
+
+  /// Retourne un label de score approprié
   static String getScoreLabel(double score, String lang) {
     if (score >= 90.0) return t('excellent', lang);
     if (score >= 70.0) return t('passed', lang);
@@ -215,93 +265,4 @@ class RecitationTranslations {
     if (score >= 30.0) return t('average', lang);
     return t('to_improve', lang);
   }
-
-  /// Helper pour obtenir le message d'indice basé sur le score et les tentatives
-  static String getHintMessage(double lastScore, bool hasAttempts, String lang) {
-    if (!hasAttempts) {
-      return t('speak_slowly', lang);
-    }
-
-    if (lastScore < 30.0) {
-      return t('check_text', lang);
-    } else if (lastScore < 50.0) {
-      return t('check_word_order', lang);
-    } else if (lastScore < 70.0) {
-      return t('attention_details', lang);
-    }
-
-    return t('excellent_work', lang);
-  }
-
-  /// Helper pour formater les tentatives restantes
-  static String formatAttemptsRemaining(int count, String lang) {
-    final s = count > 1 ? 's' : '';
-    return t('remaining_attempts', lang, params: {
-      'count': count.toString(),
-      's': s,
-    });
-  }
-
-  /// Helper pour obtenir la position ordinale
-  static String getOrdinalPosition(int position, String lang) {
-    if (lang == 'fr') {
-      if (position == 1) return t('position_1st', lang);
-      return t('position_nth', lang, params: {'n': position.toString()});
-    }
-
-    // Anglais
-    if (position == 1) return t('position_1st', lang);
-    if (position == 2) return t('position_2nd', lang);
-    if (position == 3) return t('position_3rd', lang);
-
-    // Pour les autres positions en anglais
-    String suffix = 'th';
-    if (position % 100 < 11 || position % 100 > 13) {
-      switch (position % 10) {
-        case 1: suffix = 'st'; break;
-        case 2: suffix = 'nd'; break;
-        case 3: suffix = 'rd'; break;
-      }
-    }
-    return '${position}$suffix';
-  }
 }
-
-// ==============================================================================
-// EXEMPLES D'UTILISATION
-// ==============================================================================
-/*
-// Import
-import 'package:memoriz_bible/l10n/recitation_translations.dart';
-import 'package:memoriz_bible/models/language_provider.dart';
-import 'package:provider/provider.dart';
-
-// Dans un Widget
-String t(String key, {Map<String, String>? params}) {
-  final lang = context.read<LanguageProvider>().language;
-  return RecitationTranslations.t(key, lang, params: params);
-}
-
-// Utilisation simple
-Text(t('recitation'));
-
-// Avec paramètres
-Text(t('multiplayer_game', params: {'code': roomCode}));
-
-// Message d'encouragement basé sur le score
-String encouragement = RecitationTranslations.getEncouragementMessage(85.5, 'fr');
-
-// Label de score
-String scoreLabel = RecitationTranslations.getScoreLabel(75.0, 'fr');
-
-// Message d'indice
-String hint = RecitationTranslations.getHintMessage(45.0, true, 'fr');
-
-// Formater les tentatives restantes
-String attemptsText = RecitationTranslations.formatAttemptsRemaining(2, 'fr');
-// Résultat: "Il vous reste 2 essais"
-
-// Position ordinale
-String position = RecitationTranslations.getOrdinalPosition(3, 'en');
-// Résultat: "3rd"
-*/

@@ -319,15 +319,27 @@ class RecitationPage extends StatelessWidget {
     );
   }
 
-  void _handleProgressionEnd(BuildContext context, bool didWin) {
+  void _handleProgressionEnd(BuildContext context, bool didWin) async {
+    print('🎮 [RecitationPage] _handleProgressionEnd called with didWin=$didWin');
+
     final score = didWin ? 100 : 0;
-    context.read<VerseLibrary>().onGameFinished(
+
+    // Attendre que onGameFinished termine
+    await context.read<VerseLibrary>().onGameFinished(
       verse: verse!,
       gameMode: "recitation",
       score: score,
-    ).then((_) {
-      Navigator.of(context).pop(true);
-    });
+    );
+
+    // ✅ AJOUT : Délai supplémentaire pour garantir que Firebase est à jour
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    print('✅ [RecitationPage] Firebase updated, returning to VerseDetailPage');
+
+    // Retourner seulement après que tout soit terminé
+    if (context.mounted) {
+      Navigator.of(context).pop(didWin);
+    }
   }
 }
 
@@ -682,6 +694,11 @@ class _RecitationGameViewState extends State<RecitationGameView>
   }
 
   Widget _buildGameContent(RecitationController controller) {
+
+    if (controller is RecitationSoloController &&
+        controller.showReferenceVerification) {
+      return _buildReferenceVerificationStep(controller);
+    }
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(20),
@@ -699,6 +716,266 @@ class _RecitationGameViewState extends State<RecitationGameView>
             _buildMultiplayerInfo(controller),
           if (controller is RecitationSoloController)
             _buildSoloProgressInfo(controller),
+          const SizedBox(height: 100),
+        ],
+      ),
+    );
+  }
+  Widget _buildReferenceVerificationStep(RecitationSoloController controller) {
+    final TextEditingController textController = TextEditingController(text: controller.referenceInput);
+
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          // En-tête "Excellente récitation"
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.purple.shade50, Colors.purple.shade100],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.check_circle_outline,
+                  size: 60,
+                  color: Colors.purple.shade600,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  t('excellent_recitation'),
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.purple.shade700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  t('one_last_step'),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 32),
+
+          // Indicateur de tentatives (coeurs)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              controller.maxReferenceAttempts,
+                  (index) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Icon(
+                  index < controller.referenceAttempts
+                      ? Icons.favorite_border
+                      : Icons.favorite,
+                  color: Colors.red,
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${controller.maxReferenceAttempts - controller.referenceAttempts} ${t('tries_left')}',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 32),
+
+          // Instruction
+          Text(
+            t('enter_verse_reference'),
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+            textAlign: TextAlign.center,
+          ),
+
+          const SizedBox(height: 24),
+
+          // Champ de saisie
+          TextField(
+            controller: textController,
+            enabled: !controller.showReferenceResult,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            decoration: InputDecoration(
+              hintText: t('placeholder_reference'),
+              hintStyle: TextStyle(color: Colors.grey.shade400),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.purple.shade200, width: 2),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.purple.shade200, width: 2),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Colors.purple, width: 3),
+              ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.grey.shade300, width: 2),
+              ),
+            ),
+            onChanged: (value) => controller.updateReferenceInput(value),
+            onSubmitted: (_) {
+              if (!controller.showReferenceResult &&
+                  textController.text.trim().isNotEmpty) {
+                controller.validateReference();
+              }
+            },
+          ),
+
+          const SizedBox(height: 24),
+
+          // Résultat de la validation
+          if (controller.showReferenceResult)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: controller.referenceIsCorrect
+                    ? Colors.green.shade50
+                    : Colors.red.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: controller.referenceIsCorrect
+                      ? Colors.green
+                      : Colors.red,
+                  width: 3,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    controller.referenceIsCorrect
+                        ? Icons.check_circle
+                        : Icons.cancel,
+                    size: 64,
+                    color: controller.referenceIsCorrect
+                        ? Colors.green
+                        : Colors.red,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    controller.referenceIsCorrect
+                        ? t('correct')
+                        : t('incorrect'),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: controller.referenceIsCorrect
+                          ? Colors.green.shade900
+                          : Colors.red.shade900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    controller.referenceIsCorrect
+                        ? t('reference_correct_message')
+                        : controller.referenceAttempts >= controller.maxReferenceAttempts
+                        ? t('correct_reference_is')
+                        : t('reference_incorrect_try_again'),
+                    style: const TextStyle(fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                  if (!controller.referenceIsCorrect &&
+                      controller.referenceAttempts >= controller.maxReferenceAttempts) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.purple, width: 2),
+                      ),
+                      child: Text(
+                        controller.verse.reference,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purple,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+          const SizedBox(height: 32),
+
+          // Boutons d'action
+          if (!controller.showReferenceResult) ...[
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: textController.text.trim().isNotEmpty
+                    ? () => controller.validateReference()
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purple,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.grey.shade300,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  t('validate'),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => controller.skipReferenceVerification(),
+              child: Text(
+                t('skip'),
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+            ),
+          ],
+
           const SizedBox(height: 100),
         ],
       ),
