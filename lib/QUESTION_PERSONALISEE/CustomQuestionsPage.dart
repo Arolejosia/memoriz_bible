@@ -551,14 +551,38 @@ class CustomQuestionsPage extends StatelessWidget {
 
 // ============= 4. PAGE DES LISTES =============
 
-class QuestionListsPage extends StatelessWidget {
+class QuestionListsPage extends StatefulWidget {
   final String userId;
 
   const QuestionListsPage({Key? key, required this.userId}) : super(key: key);
 
+  @override
+  State<QuestionListsPage> createState() => _QuestionListsPageState();
+}
+
+class _QuestionListsPageState extends State<QuestionListsPage> {
+  late Stream<QuerySnapshot> _listsStream;
+
   String t(BuildContext context, String key) {
     final lang = context.read<LanguageProvider>().language;
     return CustomQuestionsTranslations.t(key, lang);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 🔥 FIX iOS : initialiser le Stream APRÈS montage
+    // Empêche un rebuild pendant la transition Navigator.push
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        _listsStream = FirebaseFirestore.instance
+            .collection('questionLists')
+            .where('userId', isEqualTo: widget.userId)
+            .orderBy('createdAt', descending: true)
+            .snapshots();
+      });
+    });
   }
 
   @override
@@ -567,81 +591,9 @@ class QuestionListsPage extends StatelessWidget {
       appBar: AppBar(
         title: Text(t(context, 'my_lists')),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('questionLists')
-            .where('userId', isEqualTo: userId)
-            .orderBy('createdAt', descending: true)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('${t(context, 'error')}: ${snapshot.error}'));
-          }
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-
-          final lists = snapshot.data?.docs ?? [];
-
-          if (lists.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.folder_open, size: 80, color: Colors.grey[400]),
-                  const SizedBox(height: 16),
-                  Text(
-                    t(context, 'no_lists_yet'),
-                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    t(context, 'create_first_list'),
-                    style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: lists.length,
-            itemBuilder: (context, index) {
-              final listData = lists[index].data() as Map<String, dynamic>;
-              final questionList = QuestionList.fromMap(listData);
-
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: const Icon(Icons.folder, color: Colors.blue),
-                  title: Text(questionList.name),
-                  subtitle: Text(
-                    '${questionList.questionIds.length} ${t(context, 'questions')}',
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: () => _showDeleteListDialog(context, questionList.id),
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ListDetailPage(
-                          listId: questionList.id,
-                          listName: questionList.name,
-                          userId: userId,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
-          );
-        },
-      ),
+      // Si le stream n'est pas encore prêt → chargement stable
+      body: _listsStreamBuilder(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showCreateListDialog(context),
         icon: const Icon(Icons.add),
@@ -650,6 +602,96 @@ class QuestionListsPage extends StatelessWidget {
     );
   }
 
+  /// --- WIDGET STREAM BUILDER IOS-SAFE ---
+  Widget _listsStreamBuilder() {
+    if (_listsStream == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: _listsStream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Text("${t(context, 'error')}: ${snapshot.error}"),
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final lists = snapshot.data!.docs;
+
+        if (lists.isEmpty) {
+          return _emptyState(context);
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: lists.length,
+          itemBuilder: (context, index) {
+            final listData = lists[index].data() as Map<String, dynamic>;
+            final questionList = QuestionList.fromMap(listData);
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: ListTile(
+                leading: const Icon(Icons.folder, color: Colors.blue),
+                title: Text(questionList.name),
+                subtitle: Text(
+                  '${questionList.questionIds.length} ${t(context, 'questions')}',
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: () =>
+                      _showDeleteListDialog(context, questionList.id),
+                ),
+                onTap: () {
+                  // Navigation iOS-safe : push après frame
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ListDetailPage(
+                          listId: questionList.id,
+                          listName: questionList.name,
+                          userId: widget.userId,
+                        ),
+                      ),
+                    );
+                  });
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _emptyState(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.folder_open, size: 80, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text(
+            t(context, 'no_lists_yet'),
+            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            t(context, 'create_first_list'),
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// --- CREATION DIALOG (inchangé mais compatible iOS) ---
   Future<void> _showCreateListDialog(BuildContext context) async {
     final nameController = TextEditingController();
     final descController = TextEditingController();
@@ -693,31 +735,23 @@ class QuestionListsPage extends StatelessWidget {
     );
 
     if (result == true && nameController.text.trim().isNotEmpty) {
-      try {
-        final listId = FirebaseFirestore.instance.collection('questionLists').doc().id;
+      final listId = FirebaseFirestore.instance.collection('questionLists').doc().id;
 
-        await FirebaseFirestore.instance.collection('questionLists').doc(listId).set({
-          'id': listId,
-          'name': nameController.text.trim(),
-          'description': descController.text.trim().isNotEmpty
-              ? descController.text.trim()
-              : null,
-          'questionIds': [],
-          'userId': userId,
-          'createdAt': DateTime.now().toIso8601String(),
-        });
+      await FirebaseFirestore.instance.collection('questionLists').doc(listId).set({
+        'id': listId,
+        'name': nameController.text.trim(),
+        'description': descController.text.trim().isNotEmpty
+            ? descController.text.trim()
+            : null,
+        'questionIds': [],
+        'userId': widget.userId,
+        'createdAt': DateTime.now().toIso8601String(),
+      });
 
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(t(context, 'list_created'))),
-          );
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${t(context, 'error')}: $e')),
-          );
-        }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(t(context, 'list_created'))),
+        );
       }
     }
   }
@@ -743,27 +777,20 @@ class QuestionListsPage extends StatelessWidget {
     );
 
     if (confirmed == true) {
-      try {
-        await FirebaseFirestore.instance
-            .collection('questionLists')
-            .doc(listId)
-            .delete();
+      await FirebaseFirestore.instance
+          .collection('questionLists')
+          .doc(listId)
+          .delete();
 
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(t(context, 'list_deleted'))),
-          );
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${t(context, 'error')}: $e')),
-          );
-        }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(t(context, 'list_deleted'))),
+        );
       }
     }
   }
 }
+
 
 // ============= 5. PAGE DÉTAIL LISTE =============
 
