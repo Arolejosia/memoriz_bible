@@ -446,61 +446,45 @@ class _HubPageState extends State<HubPage> {
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop('cancel'),
-              child: const Text('Annuler'),
-            ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop('cancel'),
+                  child: const Text('Annuler'),
+                ),
+                const SizedBox(height: 8),
 
-            // Les 3 boutons en colonne
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Bouton "Choisir une liste existante"
-                  ElevatedButton.icon(
-                    onPressed: listsWithQuestions.isEmpty
-                        ? null
-                        : () => Navigator.of(context).pop('select'),
-                    icon: const Icon(Icons.playlist_play),
-                    label: Text(listsWithQuestions.isEmpty
+                ElevatedButton.icon(
+                  onPressed: listsWithQuestions.isEmpty
+                      ? null
+                      : () => Navigator.of(context).pop('select'),
+                  icon: const Icon(Icons.playlist_play),
+                  label: Text(
+                    listsWithQuestions.isEmpty
                         ? 'Aucune liste disponible'
-                        : 'Choisir une liste existante'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
+                        : 'Choisir une liste existante',
                   ),
-                  const SizedBox(height: 8),
+                ),
+                const SizedBox(height: 8),
 
-                  // Bouton "Créer des questions"
-                  OutlinedButton.icon(
-                    onPressed: () => Navigator.of(context).pop('questions'),
-                    icon: const Icon(Icons.quiz),
-                    label: const Text('Créer des questions'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.blue,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).pop('questions'),
+                  icon: const Icon(Icons.quiz),
+                  label: const Text('Créer des questions'),
+                ),
+                const SizedBox(height: 8),
 
-                  const SizedBox(height: 8),
-
-                  // Bouton "Créer une liste"
-                  OutlinedButton.icon(
-                    onPressed: () => Navigator.of(context).pop('list'),
-                    icon: const Icon(Icons.list),
-                    label: const Text('Créer une liste'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.orange,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ],
-              ),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).pop('list'),
+                  icon: const Icon(Icons.list),
+                  label: const Text('Créer une liste'),
+                ),
+              ],
             ),
           ],
+
         );
       },
     );
