@@ -81,36 +81,29 @@ class _WaitingRoomPageState extends State<WaitingRoomPage> {
       appBar: AppBar(
         title: Text(t('room_title', params: {'roomCode': widget.roomCode})),
         actions: [
-          PopupMenuButton<String>(
+          // ✅ REMPLACEZ TOUT LE PopupMenuButton PAR CE CODE SIMPLE :
+          IconButton(
             icon: const Icon(Icons.share),
             tooltip: t('share'),
-            onSelected: (value) async {
-              if (value == 'share') {
-                try {
-                  // ✅ Obtenir la position pour iPad
-                  final box = context.findRenderObject() as RenderBox?;
-                  final sharePositionOrigin = box != null
-                      ? box.localToGlobal(Offset.zero) & box.size
-                      : null;
+            onPressed: () async {
+              try {
+                // Obtenir la position pour iPad
+                final box = context.findRenderObject() as RenderBox?;
+                final sharePositionOrigin = box != null
+                    ? box.localToGlobal(Offset.zero) & box.size
+                    : null;
 
-                  await Share.share(
-                    t('share_invite_message', params: {'roomCode': widget.roomCode}),
-                    subject: t('share_invite_subject'),
-                    sharePositionOrigin: sharePositionOrigin,
-                  );
-                } catch (e) {
-                  print('❌ Erreur de partage: $e');
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(t('share_error')),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              } else if (value == 'copy') {
-                // ✅ Copier le code dans le presse-papier
+                await Share.share(
+                  t('share_invite_message', params: {'roomCode': widget.roomCode}),
+                  subject: t('share_invite_subject'),
+                  sharePositionOrigin: sharePositionOrigin,
+                );
+              } catch (e) {
+                print('❌ Erreur de partage: $e');
+
+                // Fallback : copier le code
                 await Clipboard.setData(ClipboardData(text: widget.roomCode));
+
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -121,28 +114,6 @@ class _WaitingRoomPageState extends State<WaitingRoomPage> {
                 );
               }
             },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'share',
-                child: Row(
-                  children: [
-                    const Icon(Icons.share, size: 20),
-                    const SizedBox(width: 12),
-                    Text(t('share')),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'copy',
-                child: Row(
-                  children: [
-                    const Icon(Icons.copy, size: 20),
-                    const SizedBox(width: 12),
-                    Text(t('copy_code')),
-                  ],
-                ),
-              ),
-            ],
           ),
         ],
       ),

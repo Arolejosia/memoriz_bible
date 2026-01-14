@@ -51,5 +51,9 @@
     	<string>MemorizBible a besoin d'accéder au microphone pour le mode récitation afin d'enregistrer votre voix pendant que vous récitez les versets bibliques.</string>
     	<key>NSSpeechRecognitionUsageDescription</key>
     	<string>MemorizBible utilise la reconnaissance vocale pour vérifier votre récitation des versets bibliques et vous aider à mémoriser les Écritures.</string>
+    	<key>NSPhotoLibraryAddUsageDescription</key>
+            <string>MemorizBible a besoin d'accéder à vos photos pour partager des invitations de jeu.</string>
+            <key>NSPhotoLibraryUsageDescription</key>
+            <string>MemorizBible a besoin d'accéder à vos photos pour partager des invitations de jeu.</string>
 </dict>
 </plist>
