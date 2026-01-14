@@ -18,6 +18,22 @@ class MPTranslations {
       'en': 'John 3:16',
 
     },
+    'share': {
+      'fr': 'Partager',
+      'en': 'Share',
+    },
+    'copy_code': {
+      'fr': 'Copier le code',
+      'en': 'Copy code',
+    },
+    'code_copied': {
+      'fr': 'Code copié dans le presse-papier !',
+      'en': 'Code copied to clipboard!',
+    },
+    'share_error': {
+      'fr': 'Erreur lors du partage',
+      'en': 'Error sharing',
+    },
     'cancel': {
       'fr': 'Annuler',
       'en': 'Cancel',

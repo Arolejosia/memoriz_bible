@@ -405,7 +405,7 @@ class _QCMCreationPageState extends State<QCMCreationPage> {
             ? _explanationController.text.trim()
             : null,
         'userId': widget.userId,
-        'listId': widget.listId,
+        'listIds': widget.listId != null ? [widget.listId] : [],
         'createdAt': DateTime.now().toIso8601String(),
       });
 
@@ -760,7 +760,8 @@ class _VraiFauxCreationPageState extends State<VraiFauxCreationPage> {
             ? _explanationController.text.trim()
             : null,
         'userId': widget.userId,
-        'listId': widget.listId,
+        'listIds': widget.listId != null ? [widget.listId] : [],
+
         'createdAt': DateTime.now().toIso8601String(),
       });
 
@@ -1098,7 +1099,8 @@ class _TexteTrousCreationPageState extends State<TexteTrousCreationPage> {
             ? _explanationController.text.trim()
             : null,
         'userId': widget.userId,
-        'listId': widget.listId,
+        'listIds': widget.listId != null ? [widget.listId] : [],
+
         'createdAt': DateTime.now().toIso8601String(),
       });
 
@@ -1401,7 +1403,8 @@ class _QuestionOuverteCreationPageState extends State<QuestionOuverteCreationPag
             ? _explanationController.text.trim()
             : null,
         'userId': widget.userId,
-        'listId': widget.listId,
+        'listIds': widget.listId != null ? [widget.listId] : [],
+
         'createdAt': DateTime.now().toIso8601String(),
       });
 
@@ -1434,4 +1437,21 @@ class _QuestionOuverteCreationPageState extends State<QuestionOuverteCreationPag
       }
     }
   }
+}
+Future<void> assignQuestionsToList(String listId, List<String> questionIds) async {
+  final batch = FirebaseFirestore.instance.batch();
+
+  final listRef = FirebaseFirestore.instance.collection('questionLists').doc(listId);
+  batch.update(listRef, {
+    'questionIds': FieldValue.arrayUnion(questionIds),
+  });
+
+  for (final qId in questionIds) {
+    final qRef = FirebaseFirestore.instance.collection('customQuestions').doc(qId);
+    batch.update(qRef, {
+      'listIds': FieldValue.arrayUnion([listId]),
+    });
+  }
+
+  await batch.commit();
 }

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 
@@ -80,15 +81,69 @@ class _WaitingRoomPageState extends State<WaitingRoomPage> {
       appBar: AppBar(
         title: Text(t('room_title', params: {'roomCode': widget.roomCode})),
         actions: [
-          IconButton(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.share),
-            onPressed: () {
-              Share.share(
-                t('share_invite_message', params: {'roomCode': widget.roomCode}),
-                subject: t('share_invite_subject'),
-              );
+            tooltip: t('share'),
+            onSelected: (value) async {
+              if (value == 'share') {
+                try {
+                  // ✅ Obtenir la position pour iPad
+                  final box = context.findRenderObject() as RenderBox?;
+                  final sharePositionOrigin = box != null
+                      ? box.localToGlobal(Offset.zero) & box.size
+                      : null;
+
+                  await Share.share(
+                    t('share_invite_message', params: {'roomCode': widget.roomCode}),
+                    subject: t('share_invite_subject'),
+                    sharePositionOrigin: sharePositionOrigin,
+                  );
+                } catch (e) {
+                  print('❌ Erreur de partage: $e');
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(t('share_error')),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              } else if (value == 'copy') {
+                // ✅ Copier le code dans le presse-papier
+                await Clipboard.setData(ClipboardData(text: widget.roomCode));
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(t('code_copied')),
+                    backgroundColor: Colors.green,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
             },
-          )
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'share',
+                child: Row(
+                  children: [
+                    const Icon(Icons.share, size: 20),
+                    const SizedBox(width: 12),
+                    Text(t('share')),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'copy',
+                child: Row(
+                  children: [
+                    const Icon(Icons.copy, size: 20),
+                    const SizedBox(width: 12),
+                    Text(t('copy_code')),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       body: StreamBuilder<DocumentSnapshot>(

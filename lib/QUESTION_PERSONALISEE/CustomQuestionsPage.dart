@@ -561,7 +561,7 @@ class QuestionListsPage extends StatefulWidget {
 }
 
 class _QuestionListsPageState extends State<QuestionListsPage> {
-  late Stream<QuerySnapshot> _listsStream;
+  Stream<QuerySnapshot>? _listsStream;
 
   String t(BuildContext context, String key) {
     final lang = context.read<LanguageProvider>().language;
@@ -572,17 +572,11 @@ class _QuestionListsPageState extends State<QuestionListsPage> {
   void initState() {
     super.initState();
 
-    // 🔥 FIX iOS : initialiser le Stream APRÈS montage
-    // Empêche un rebuild pendant la transition Navigator.push
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      setState(() {
-        _listsStream = FirebaseFirestore.instance
-            .collection('questionLists')
-            .where('userId', isEqualTo: widget.userId)
-            .orderBy('createdAt', descending: true)
-            .snapshots();
-      });
-    });
+    _listsStream = FirebaseFirestore.instance
+        .collection('questionLists')
+        .where('userId', isEqualTo: widget.userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots();
   }
 
   @override
@@ -844,6 +838,15 @@ class _ListDetailPageState extends State<ListDetailPage> with SingleTickerProvid
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.listName),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.playlist_add),
+            tooltip: "Ajouter des questions existantes",
+            onPressed: () {
+              showAddExistingQuestionsDialog(context, widget.listId);
+            },
+          ),
+        ],
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
@@ -906,7 +909,7 @@ class _ListDetailPageState extends State<ListDetailPage> with SingleTickerProvid
                         return _QuestionCard(
                           question: question,
                           t: t,
-                          onEdit: () {},
+                          onEdit: () => _editQuestion(context, questionData),
                           onDelete: () => _removeQuestionFromList(questionIds[index]),
                         );
                       },
@@ -957,6 +960,149 @@ class _ListDetailPageState extends State<ListDetailPage> with SingleTickerProvid
       ),
     );
   }
+  Future<void> _editQuestion(BuildContext context, Map<String, dynamic> question) async {
+    Widget editPage;
+
+    switch (question['type']) {
+      case 'qcm':
+        editPage = EditQCMPage(question: question);
+        break;
+      case 'texteTrous':
+        editPage = EditTexteTrousPage(question: question);
+        break;
+      case 'vraiFaux':
+        editPage = EditVraiFauxPage(question: question);
+        break;
+      case 'ouverte':
+        editPage = EditQuestionOuvertePage(question: question);
+        break;
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(t('unknown_question_type'))),
+        );
+        return;
+    }
+
+    // Navigation iOS-safe
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => editPage),
+        );
+      }
+    });
+  }
+  void showAddExistingQuestionsDialog(
+      BuildContext context,
+      String listId,
+      ) {
+    final Set<String> selectedQuestionIds = {};
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text("Ajouter des questions existantes"),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 400,
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('customQuestions')
+                      .where('userId', isEqualTo: widget.userId)
+                      .orderBy('createdAt', descending: true)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    final questions = snapshot.data!.docs;
+
+                    if (questions.isEmpty) {
+                      return const Center(child: Text("Aucune question disponible"));
+                    }
+
+                    return ListView.builder(
+                      itemCount: questions.length,
+                      itemBuilder: (context, index) {
+                        final q = questions[index];
+                        final qId = q.id;
+                        final title = q['question'];
+
+                        return CheckboxListTile(
+                          title: Text(title),
+                          value: selectedQuestionIds.contains(qId),
+                          onChanged: (checked) {
+                            setState(() {
+                              if (checked == true) {
+                                selectedQuestionIds.add(qId);
+                              } else {
+                                selectedQuestionIds.remove(qId);
+                              }
+                            });
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text(t('cancel')),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (selectedQuestionIds.isEmpty) {
+                      Navigator.pop(dialogContext);
+                      return;
+                    }
+
+                    final batch = FirebaseFirestore.instance.batch();
+
+                    final listRef = FirebaseFirestore.instance
+                        .collection('questionLists')
+                        .doc(listId);
+
+                    batch.update(listRef, {
+                      'questionIds': FieldValue.arrayUnion(selectedQuestionIds.toList()),
+                    });
+
+                    for (final qId in selectedQuestionIds) {
+                      final qRef = FirebaseFirestore.instance
+                          .collection('customQuestions')
+                          .doc(qId);
+
+                      batch.update(qRef, {
+                        'listIds': FieldValue.arrayUnion([listId]),
+                      });
+                    }
+
+                    await batch.commit();
+
+                    Navigator.pop(dialogContext);
+
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(t('questions_added_to_list'))),
+                      );
+                    }
+                  },
+                  child: Text(t('add')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
 
   void _showQuestionTypeSelector(BuildContext context) {
     showModalBottomSheet(

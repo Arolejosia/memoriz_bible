@@ -1,13 +1,13 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../models/language_provider.dart';
 import '../screens/duels/game_results_page.dart';
+
+import 'custom_questions_multiplayer_controller.dart';
 import 'custom_questions_translations.dart';
 
-class CustomQuestionsGamePage extends StatefulWidget {
+
+class CustomQuestionsGamePage extends StatelessWidget {
   final String roomCode;
 
   const CustomQuestionsGamePage({
@@ -16,222 +16,127 @@ class CustomQuestionsGamePage extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<CustomQuestionsGamePage> createState() => _CustomQuestionsGamePageState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => CustomQuestionsMultiplayerController(roomCode: roomCode),
+      child: const _CustomQuestionsGameView(),
+    );
+  }
 }
 
-class _CustomQuestionsGamePageState extends State<CustomQuestionsGamePage> {
-  final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
-  Timer? _timer;
-  bool _hasAnswered = false;
+class _CustomQuestionsGameView extends StatelessWidget {
+  const _CustomQuestionsGameView();
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  String t(String key) {
+  String t(BuildContext context, String key) {
     final lang = context.read<LanguageProvider>().language;
     return CustomQuestionsTranslations.t(key, lang);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(t('custom_game')),
-      ),
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('game_rooms')
-            .doc(widget.roomCode)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return Center(child: CircularProgressIndicator());
-          }
+    final controller = context.watch<CustomQuestionsMultiplayerController>();
 
-          final roomData = snapshot.data!.data() as Map<String, dynamic>;
-          final winnerMessage = roomData['lastWinnerMessage'] as String?;
-          final winnerTimestamp = roomData['lastWinnerTimestamp'] as Timestamp?;
+    // ✅ Navigation automatique vers les résultats
+    if (controller.isGameFinished) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
 
-          if (winnerMessage != null && winnerTimestamp != null) {
-            final winnerName = winnerMessage.split(' ')[0];
-            final isMe = roomData['players'][currentUserId]['name'] == winnerName;
+        final questionsSummary = controller.questions.map((q) {
+          return {
+            'question': q['question'],
+            'answer': q['answer'] ?? '',
+            'reference': q['reference'] ?? '',
+            'type': q['type'],
+          };
+        }).toList();
 
-            if (!isMe) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(winnerMessage),
-                      backgroundColor: Colors.blue,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                }
-              });
-            }
-          }
+        final scores = Map<String, dynamic>.from(controller.players).map((key, value) {
+          return MapEntry(key, {
+            'name': value['name'] ?? 'Unknown',
+            'score': value['score'] ?? 0,
+          });
+        });
 
-          final questions = List<Map<String, dynamic>>.from(roomData['questions']);
-          final currentIndex = roomData['currentQuestionIndex'] as int;
-          final players = roomData['players'] as Map<String, dynamic>;
-          final timeRemaining = roomData['timeRemaining'] as int? ?? 30;
-          final timerStarted = roomData['timerStarted'] as bool? ?? false;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => GameResultsPage(
+              players: scores,
+              questions: questionsSummary,
+            ),
+          ),
+        );
+      });
 
-          // Fin du jeu
-          if (currentIndex >= questions.length) {
-            WidgetsBinding.instance.addPostFrameCallback((_) async {
-              if (mounted) {
-                final questionsSummary = questions.map((q) {
-                  String answer;
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-                  switch (q['type']) {
-                    case 'qcm':
-                      final options = q['options'] as List?;
-                      final correctIndex = q['correctAnswerIndex'] as int?;
-                      answer = (options != null && correctIndex != null)
-                          ? options[correctIndex]
-                          : t('no_answer');
-                      break;
+    if (controller.isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: Text(t(context, 'custom_game'))),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
-                    case 'texteTrous':
-                      final fullText = q['question'] as String;
-                      final blankIndices = List<int>.from(q['blankIndices'] ?? []);
-                      final words = fullText.split(' ');
-                      final correctWords = blankIndices.map((i) => words[i]).join(', ');
-                      answer = correctWords;
-                      break;
-
-                    case 'vraiFaux':
-                      final correctIndex = q['correctAnswerIndex'] as int?;
-                      answer = correctIndex == 1 ? t('true') : t('false');
-                      break;
-
-                    case 'ouverte':
-                      answer = q['openAnswer'] ?? t('no_answer');
-                      break;
-
-                    default:
-                      answer = t('unknown_type');
-                  }
-
-                  return {
-                    'question': q['question'],
-                    'answer': answer,
-                    'type': q['type'],
-                  };
-                }).toList();
-
-                final scores = Map<String, dynamic>.from(players).map((key, value) {
-                  return MapEntry(key, {
-                    'name': value['name'],
-                    'score': value['score'] ?? 0,
-                  });
-                });
-
-                await FirebaseFirestore.instance
-                    .collection('game_results')
-                    .doc(widget.roomCode)
-                    .set({
-                  'roomCode': widget.roomCode,
-                  'scores': scores,
-                  'questionsSummary': questionsSummary,
-                  'finishedAt': FieldValue.serverTimestamp(),
-                });
-
-                await FirebaseFirestore.instance
-                    .collection('game_rooms')
-                    .doc(widget.roomCode)
-                    .update({'status': 'finished'});
-
-                if (mounted) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => GameResultsPage(
-                        players: scores,
-                        questions: questionsSummary,
-                      ),
-                    ),
-                  );
-                }
-              }
-            });
-            return Center(child: CircularProgressIndicator());
-          }
-
-          final currentQuestion = questions[currentIndex];
-          final questionType = currentQuestion['type'];
-
-          if (!timerStarted) {
-            _startTimer();
-          }
-
-          return Column(
-            children: [
-              _buildProgressIndicator(currentIndex, questions.length),
-              _buildTimer(timeRemaining, timerStarted),
-              _buildScoreBoard(players),
-              Expanded(
-                child: _buildQuestionWidget(
-                    currentQuestion, questionType, timeRemaining > 0),
-              ),
-            ],
-          );
-        },
+    return WillPopScope(
+      onWillPop: () async => false,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(t(context, 'custom_game')),
+          automaticallyImplyLeading: false,
+        ),
+        body: Stack(
+          children: [
+            Column(
+              children: [
+                _buildHeader(context, controller),
+                _buildScoreboard(context, controller),
+                Expanded(
+                  child: _buildQuestionWidget(context, controller),
+                ),
+              ],
+            ),
+            // ✅ Animation du gagnant
+            if (controller.showCorrectAnswerAnimation)
+              _buildWinnerAnimation(context, controller),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildProgressIndicator(int current, int total) {
+  Widget _buildHeader(BuildContext context, CustomQuestionsMultiplayerController controller) {
+    final totalQuestions = controller.questions.length;
+    final currentIndex = controller.questions.indexOf(
+      controller.questions.firstWhere(
+            (q) => q['question'] == controller.questionText,
+        orElse: () => controller.questions.isNotEmpty ? controller.questions.first : {},
+      ),
+    );
+
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           Text(
-            '${t('question_number')} ${current + 1} ${t('of')} $total',
+            '${t(context, 'question_number')} ${currentIndex + 1} ${t(context, 'of')} $totalQuestions',
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           LinearProgressIndicator(
-            value: (current + 1) / total,
+            value: totalQuestions > 0 ? (currentIndex + 1) / totalQuestions : 0,
             backgroundColor: Colors.grey[300],
             minHeight: 8,
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimer(int timeRemaining, bool isActive) {
-    if (!isActive) return const SizedBox.shrink();
-
-    final isUrgent = timeRemaining <= 5;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: (isUrgent ? Colors.red : Colors.blue).withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.timer,
-            color: isUrgent ? Colors.red : Colors.blue,
-            size: 32,
-          ),
-          const SizedBox(width: 12),
+          const SizedBox(height: 16),
           Text(
-            '$timeRemaining s',
+            '${controller.timeLeft} s',
             style: TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.bold,
-              color: isUrgent ? Colors.red : Colors.blue,
+              color: controller.timeLeft <= 5 ? Colors.red : Colors.blue,
             ),
           ),
         ],
@@ -239,37 +144,34 @@ class _CustomQuestionsGamePageState extends State<CustomQuestionsGamePage> {
     );
   }
 
-  Widget _buildScoreBoard(Map<String, dynamic> players) {
-    final sortedPlayers = players.entries.toList()
+  Widget _buildScoreboard(BuildContext context, CustomQuestionsMultiplayerController controller) {
+    final sorted = controller.players.entries.toList()
       ..sort((a, b) => (b.value['score'] ?? 0).compareTo(a.value['score'] ?? 0));
 
     return Container(
       margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.grey[100],
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: sortedPlayers.take(3).map((entry) {
-          final player = entry.value;
-          final isMe = entry.key == currentUserId;
-
+        children: sorted.take(3).map((entry) {
+          final isMe = entry.key == controller.currentUserId;
           return Column(
             children: [
               Text(
-                player['name'],
+                entry.value['name'] ?? 'Unknown',
                 style: TextStyle(
                   fontWeight: isMe ? FontWeight.bold : FontWeight.normal,
                   color: isMe ? Colors.blue : Colors.black,
                 ),
               ),
-              const SizedBox(height: 4),
               Text(
-                '${player['score'] ?? 0} ${t('points')}',
+                '${entry.value['score'] ?? 0} ${t(context, 'points')}',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: isMe ? Colors.blue : Colors.black87,
                 ),
@@ -281,332 +183,192 @@ class _CustomQuestionsGamePageState extends State<CustomQuestionsGamePage> {
     );
   }
 
-  Future<void> _startTimer() async {
-    final roomRef = FirebaseFirestore.instance.collection('game_rooms').doc(widget.roomCode);
-    final roomDoc = await roomRef.get();
-
-    if (!roomDoc.exists) return;
-
-    final roomData = roomDoc.data()!;
-    final players = roomData['players'] as Map<String, dynamic>;
-    final hostId = roomData['hostId'] as String;
-
-    if (currentUserId != hostId) return;
-
-    await roomRef.update({'timerStarted': true, 'timeRemaining': 30});
-
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
-      final doc = await roomRef.get();
-      if (!doc.exists) {
-        timer.cancel();
-        return;
-      }
-
-      final data = doc.data()!;
-      final timeRemaining = data['timeRemaining'] as int? ?? 0;
-
-      if (timeRemaining <= 0) {
-        timer.cancel();
-        final currentIndex = data['currentQuestionIndex'] as int;
-        final questions = List<Map<String, dynamic>>.from(data['questions']);
-
-        if (currentIndex + 1 < questions.length) {
-          await roomRef.update({
-            'currentQuestionIndex': currentIndex + 1,
-            'timerStarted': false,
-            'timeRemaining': 30,
-            'lastWinnerMessage': FieldValue.delete(),
-          });
-        } else {
-          await roomRef.update({'status': 'finished'});
-        }
-      } else {
-        await roomRef.update({'timeRemaining': timeRemaining - 1});
-      }
-    });
+  Widget _buildWinnerAnimation(BuildContext context, CustomQuestionsMultiplayerController controller) {
+    return Container(
+      color: Colors.black54,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          margin: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: Colors.green,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.stars, size: 64, color: Colors.white),
+              const SizedBox(height: 16),
+              Text(
+                '${controller.correctAnswerWinnerName} ${t(context, 'found_correct_answer')}',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
-  Widget _buildQuestionWidget(Map<String, dynamic> question, String type, bool timeRemaining) {
+  Widget _buildQuestionWidget(BuildContext context, CustomQuestionsMultiplayerController controller) {
+    final type = controller.currentQuestionType;
+
     switch (type) {
       case 'qcm':
-        return _buildQCMQuestion(question);
-      case 'texteTrous':
-        return _buildTexteTrousQuestion(question);
       case 'vraiFaux':
-        return _buildVraiFauxQuestion(question);
+        return _buildQCMOrVraiFaux(context, controller);
+      case 'texteTrous':
+        return _buildTexteTrous(context, controller);
       case 'ouverte':
-        return _buildOuverteQuestion(question);
+        return _buildOuverte(context, controller);
       default:
-        return Center(child: Text(t('unknown_question_type')));
+        return Center(child: Text('${t(context, 'unknown_question_type')}: $type'));
     }
   }
 
-  Widget _buildQCMQuestion(Map<String, dynamic> question) {
-    final options = question['options'] as List<dynamic>?;
+  Widget _buildQCMOrVraiFaux(BuildContext context, CustomQuestionsMultiplayerController controller) {
+    final options = controller.options;
 
-    if (options == null || options.isEmpty) {
-      return Center(child: Text(t('no_options_available')));
-    }
-
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              question['question'],
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ...options.asMap().entries.map((entry) {
-              final index = entry.key;
-              final option = entry.value;
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: ElevatedButton(
-                  onPressed: _hasAnswered
-                      ? null
-                      : () => _submitAnswer(
-                    question['correctAnswerIndex'] == index,
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.all(20),
-                    alignment: Alignment.centerLeft,
-                  ),
-                  child: Text(option),
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTexteTrousQuestion(Map<String, dynamic> question) {
-    final words = question['question'].split(' ');
-    final blankIndices = List<int>.from(question['blankIndices'] ?? []);
-    final controllers = <int, TextEditingController>{};
-
-    for (var index in blankIndices) {
-      controllers[index] = TextEditingController();
+    if (options.isEmpty) {
+      return Center(child: Text(t(context, 'no_options_available')));
     }
 
     return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              t('complete_text'),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 24),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: words.asMap().entries.map((entry) {
-                if (blankIndices.contains(entry.key)) {
-                  return SizedBox(
-                    width: 100,
-                    child: TextField(
-                      controller: controllers[entry.key],
-                      enabled: !_hasAnswered,
-                      decoration: const InputDecoration(
-                        hintText: '____',
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 8),
-                      ),
-                    ),
-                  );
-                }
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Text(entry.value, style: const TextStyle(fontSize: 16)),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _hasAnswered
-                  ? null
-                  : () {
-                bool allCorrect = true;
-                for (var index in blankIndices) {
-                  if (controllers[index]!.text.trim().toLowerCase() !=
-                      words[index].toLowerCase()) {
-                    allCorrect = false;
-                    break;
-                  }
-                }
-                _submitAnswer(allCorrect);
-              },
-              child: Text(t('validate')),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVraiFauxQuestion(Map<String, dynamic> question) {
-    return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            question['question'],
+            controller.questionText,
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 40),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _hasAnswered
-                      ? null
-                      : () => _submitAnswer(question['correctAnswerIndex'] == 1),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.all(24),
-                  ),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.check_circle, size: 48),
-                      const SizedBox(height: 8),
-                      Text(t('true'), style: const TextStyle(fontSize: 18)),
-                    ],
-                  ),
+          const SizedBox(height: 24),
+          ...options.asMap().entries.map((entry) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: ElevatedButton(
+                onPressed: controller.iHaveAnswered
+                    ? null
+                    : () => controller.submitAnswer(entry.value),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.all(20),
+                  minimumSize: const Size(double.infinity, 60),
                 ),
+                child: Text(entry.value),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _hasAnswered
-                      ? null
-                      : () => _submitAnswer(question['correctAnswerIndex'] == 0),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.all(24),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTexteTrous(BuildContext context, CustomQuestionsMultiplayerController controller) {
+    final questionText = controller.questionText;
+    final words = questionText.split(' ');
+    final blankIndices = controller.blankIndices;
+    final controllers = <int, TextEditingController>{};
+
+    for (var i in blankIndices) {
+      controllers[i] = TextEditingController();
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            t(context, 'complete_text'),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 24),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: words.asMap().entries.map((entry) {
+              if (blankIndices.contains(entry.key)) {
+                return SizedBox(
+                  width: 100,
+                  child: TextField(
+                    controller: controllers[entry.key],
+                    enabled: !controller.iHaveAnswered,
+                    decoration: const InputDecoration(
+                      hintText: '____',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                    ),
                   ),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.cancel, size: 48),
-                      const SizedBox(height: 8),
-                      Text(t('false'), style: const TextStyle(fontSize: 18)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+                );
+              }
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(entry.value, style: const TextStyle(fontSize: 16)),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: controller.iHaveAnswered
+                ? null
+                : () {
+              final userAnswers = <int, String>{};
+              for (var i in blankIndices) {
+                userAnswers[i] = controllers[i]!.text;
+              }
+              controller.submitTexteTrousAnswer(userAnswers);
+            },
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            ),
+            child: Text(t(context, 'validate'), style: const TextStyle(fontSize: 18)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildOuverteQuestion(Map<String, dynamic> question) {
-    final controller = TextEditingController();
+  Widget _buildOuverte(BuildContext context, CustomQuestionsMultiplayerController controller) {
+    final textController = TextEditingController();
 
     return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              question['question'],
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            controller.questionText,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: textController,
+            maxLines: 3,
+            enabled: !controller.iHaveAnswered,
+            decoration: InputDecoration(
+              hintText: t(context, 'your_answer_placeholder'),
+              border: const OutlineInputBorder(),
             ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: controller,
-              maxLines: 3,
-              enabled: !_hasAnswered,
-              decoration: InputDecoration(
-                hintText: t('your_answer_placeholder'),
-                border: const OutlineInputBorder(),
-              ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: controller.iHaveAnswered
+                ? null
+                : () => controller.submitOpenAnswer(textController.text),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
             ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _hasAnswered
-                  ? null
-                  : () {
-                final isCorrect = controller.text.trim().toLowerCase() ==
-                    question['openAnswer'].toString().toLowerCase();
-                _submitAnswer(isCorrect);
-              },
-              child: Text(t('validate')),
-            ),
-          ],
-        ),
+            child: Text(t(context, 'validate'), style: const TextStyle(fontSize: 18)),
+          ),
+        ],
       ),
     );
-  }
-
-  Future<void> _submitAnswer(bool isCorrect) async {
-    if (_hasAnswered) return;
-    setState(() => _hasAnswered = true);
-
-    final roomRef = FirebaseFirestore.instance
-        .collection('game_rooms')
-        .doc(widget.roomCode);
-    final roomDoc = await roomRef.get();
-    final roomData = roomDoc.data()!;
-    final currentIndex = roomData['currentQuestionIndex'];
-    final timeRemaining = roomData['timeRemaining'] as int? ?? 30;
-    final players = roomData['players'] as Map<String, dynamic>;
-    final myName = players[currentUserId]['name'] as String;
-
-    if (isCorrect) {
-      final pointsEarned = timeRemaining;
-      await roomRef.update({
-        'players.$currentUserId.score': FieldValue.increment(pointsEarned),
-        'lastWinnerMessage': '$myName ${t('found_correct_answer')}',
-        'lastWinnerTimestamp': FieldValue.serverTimestamp(),
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${t('correct_answer')} +$pointsEarned ${t('points')}'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-
-      _timer?.cancel();
-      await Future.delayed(const Duration(seconds: 2));
-
-      final questions = List<Map<String, dynamic>>.from(roomData['questions']);
-
-      if (currentIndex + 1 < questions.length) {
-        await roomRef.update({
-          'currentQuestionIndex': currentIndex + 1,
-          'timerStarted': false,
-          'timeRemaining': 30,
-          'lastWinnerMessage': FieldValue.delete(),
-        });
-      } else {
-        await roomRef.update({'status': 'finished'});
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(t('wrong_answer')),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-
-    if (mounted) setState(() => _hasAnswered = false);
   }
 }
