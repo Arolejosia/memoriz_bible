@@ -196,28 +196,29 @@ class _DicteeMultiplayerPageState extends State<DicteeMultiplayerPage> {
           const SizedBox(height: 16),
 
           // Timer local si actif
-          if (controller.timerActive)
-            Card(
-              color: Colors.orange.shade50,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.timer, color: Colors.orange),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${t('input_time_remaining')}: ${controller.timeRemaining}s',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange.shade800,
-                      ),
+          // Timer global Firestore
+          Card(
+            color: Colors.orange.shade50,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.timer, color: Colors.orange),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${t('input_time_remaining')}: ${controller.globalTimeLeft}s',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange.shade800,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
+          ),
+
 
           const SizedBox(height: 16),
 

@@ -4,8 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../../services/Bible_service.dart';
 import '../../../services/tts_service.dart';
-import '../../../models/language_provider.dart'; // ðŸ‘ˆ AJOUT
-import 'package:provider/provider.dart'; // ðŸ‘ˆ AJOUT
+import '../../../models/language_provider.dart';
+import 'package:provider/provider.dart';
 
 class DicteeMultiplayerController extends ChangeNotifier {
   final String roomCode;
@@ -18,22 +18,20 @@ class DicteeMultiplayerController extends ChangeNotifier {
   Map<String, dynamic> _roomData = {};
   bool _isInitialized = false;
 
-  // DonnÃ©es locales
+  // Données locales
   List<Map<String, dynamic>> _localQuestions = [];
   int _localCurrentQuestionIndex = 0;
   Map<String, int> _localScores = {};
 
-  // Ã‰tat de dictÃ©e
+  // État de dictée
   final TtsService _ttsService = TtsService();
   final TextEditingController _textController = TextEditingController();
   bool _isVerifying = false;
   bool _hasSubmitted = false;
-  bool _timerActive = false;
-  int _timeRemaining = 0;
 
+  // ❌ CHRONOMÈTRE LOCAL RETIRÉ - Variables supprimées
 
-
-  // Getters (inchangÃ©s)
+  // Getters
   String get _hostId => _roomData['hostId'] ?? '';
   bool get _isHost => currentUserId == _hostId;
   Map<String, dynamic> get _players => _roomData['players'] as Map<String, dynamic>? ?? {};
@@ -43,7 +41,7 @@ class DicteeMultiplayerController extends ChangeNotifier {
     return _localQuestions[_localCurrentQuestionIndex];
   }
 
-  // Getters publics (inchangÃ©s)
+  // Getters publics
   bool get isLoading => !_isInitialized || _localQuestions.isEmpty;
   bool get isGameFinished => _roomData['status'] == 'finished';
   int get currentScore => _localScores[currentUserId] ?? 0;
@@ -52,11 +50,11 @@ class DicteeMultiplayerController extends ChangeNotifier {
   String get correctText => _currentQuestion['text'] ?? '';
   bool get isVerifying => _isVerifying;
   bool get hasSubmitted => _hasSubmitted;
-  bool get timerActive => _timerActive;
-  int get timeRemaining => _timeRemaining;
   TextEditingController get textController => _textController;
 
-  // PropriÃ©tÃ©s multijoueur (inchangÃ©es)
+  // ❌ CHRONOMÈTRE LOCAL RETIRÉ - Getters supprimés
+
+  // Propriétés multijoueur
   Map<String, dynamic> get players => _players;
   List<dynamic> get questions => _localQuestions;
   bool get questionAlreadyAnswered => _roomData['status'] == 'answered' || _roomData['correctAnswerFound'] == true;
@@ -85,10 +83,8 @@ class DicteeMultiplayerController extends ChangeNotifier {
       ..sort((a, b) => b.value.compareTo(a.value));
   }
 
-  // ðŸ”„ MODIFIÃ‰ : Ajout du paramÃ¨tre context
   DicteeMultiplayerController({
     required this.roomCode,
-    // ðŸ‘ˆ AJOUT
     required this.language,
   }) {
     _initializeAndListenToRoom();
@@ -98,7 +94,8 @@ class DicteeMultiplayerController extends ChangeNotifier {
     try {
       _ttsService.setCompletionHandler(() {
         if (mounted) {
-          _startLocalTimer();
+          print('🔊 Lecture terminée');
+          notifyListeners();
         }
       });
 
@@ -182,8 +179,6 @@ class DicteeMultiplayerController extends ChangeNotifier {
     _textController.clear();
     _hasSubmitted = false;
     _isVerifying = false;
-    _timerActive = false;
-    _timeRemaining = 0;
     _questionTimer?.cancel();
     _countdownTimer?.cancel();
   }
@@ -264,44 +259,17 @@ class DicteeMultiplayerController extends ChangeNotifier {
 
   Future<void> playVerse() async {
     if (_hasSubmitted || questionAlreadyAnswered || correctText.isEmpty) return;
+    print('🔊 Lecture du verset (sans chronomètre local)');
     await _ttsService.speak(correctText);
   }
 
-  void _startLocalTimer() {
-    if (_timerActive || _hasSubmitted) return;
-
-    final wordCount = correctText.split(' ').length;
-    final initialTime = 15 + (wordCount * 1.5).round();
-
-    _timeRemaining = initialTime;
-    _timerActive = true;
-    notifyListeners();
-
-    Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_timeRemaining > 0 && _timerActive) {
-        _timeRemaining--;
-        notifyListeners();
-      } else {
-        timer.cancel();
-        if (_timerActive) {
-          _timerActive = false;
-          notifyListeners();
-          if (!_hasSubmitted) {
-            _verifyDictation();
-          }
-        }
-      }
-    });
-  }
+  // ❌ MÉTHODE _startLocalTimer COMPLÈTEMENT SUPPRIMÉE
 
   Future<void> submitAnswer() async {
     if (_textController.text.isEmpty || _hasSubmitted || questionAlreadyAnswered) return;
-
-    _timerActive = false;
     await _verifyDictation();
   }
 
-  // ðŸ”„ MODIFIÃ‰ : Ajout du paramÃ¨tre language
   Future<void> _verifyDictation() async {
     if (_textController.text.isEmpty || _hasSubmitted || questionAlreadyAnswered) return;
 
@@ -310,11 +278,10 @@ class DicteeMultiplayerController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // ðŸ‘‡ PASSE LA LANGUE Ã€ L'API
       final score = await BibleService().getVerificationScore(
         _textController.text,
         correctText,
-        language: language, // ðŸ‘ˆ AJOUT
+        language: language,
       );
 
       final isCorrect = score >= 70;
@@ -350,7 +317,6 @@ class DicteeMultiplayerController extends ChangeNotifier {
   Future<void> _endCurrentQuestion() async {
     _questionTimer?.cancel();
     _countdownTimer?.cancel();
-    _timerActive = false;
 
     try {
       await FirebaseFirestore.instance.runTransaction((transaction) async {
@@ -422,7 +388,6 @@ class DicteeMultiplayerController extends ChangeNotifier {
     try {
       _questionTimer?.cancel();
       _countdownTimer?.cancel();
-      _timerActive = false;
 
       final success = await FirebaseFirestore.instance.runTransaction((transaction) async {
         final roomRef = FirebaseFirestore.instance.collection('game_rooms').doc(roomCode);
@@ -445,7 +410,7 @@ class DicteeMultiplayerController extends ChangeNotifier {
 
           final List<Map<String, dynamic>> minimalSummary = _localQuestions.map((q) {
             return {
-              "question": q["reference"] ?? "DictÃ©e",
+              "question": q["reference"] ?? "Dictée",
               "answer": q["text"] ?? "",
               "reference": q["reference"],
             };
@@ -495,7 +460,6 @@ class DicteeMultiplayerController extends ChangeNotifier {
     if (isGameFinished) {
       _questionTimer?.cancel();
       _countdownTimer?.cancel();
-      _timerActive = false;
       notifyListeners();
     }
   }

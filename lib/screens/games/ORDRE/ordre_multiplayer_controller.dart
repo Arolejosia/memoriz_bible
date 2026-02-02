@@ -133,7 +133,7 @@ class OrdreMultiplayerController extends OrdreGameControllerBase {
 
   int get timeLeft {
     final endsAt = _roomData['currentQuestionEndsAt'] as Timestamp?;
-    if (endsAt == null) return 30; // Temps par défaut plus long pour ce jeu
+    if (endsAt == null) return _calculateAdaptiveTime(); // ✅ Temps adaptatif
 
     final now = DateTime.now();
     final endTime = endsAt.toDate();
@@ -141,7 +141,22 @@ class OrdreMultiplayerController extends OrdreGameControllerBase {
         .difference(now)
         .inSeconds;
 
-    return secondsLeft.clamp(0, 30);
+    return secondsLeft.clamp(0, _calculateAdaptiveTime());
+  }
+
+  // ✅ NOUVELLE MÉTHODE : Calcul du temps adaptatif
+  int _calculateAdaptiveTime() {
+    if (_currentQuestion.isEmpty) return 30;
+
+    final ordreCorrect = _currentQuestion['ordre_correct'] as List<dynamic>? ?? [];
+    final nombreDeMots = ordreCorrect.length;
+
+    // Formule : (nombre_de_mots × 4) + 15 secondes
+    final tempsCalcule = (nombreDeMots * 4) + 15;
+
+    print('⏱️ Temps adaptatif calculé : $tempsCalcule secondes pour $nombreDeMots mots');
+
+    return tempsCalcule;
   }
 
   List<MapEntry<String, int>> get playerRanking {
@@ -337,7 +352,9 @@ class OrdreMultiplayerController extends OrdreGameControllerBase {
     _questionTimer?.cancel();
     _countdownTimer?.cancel();
 
-    final endsAt = DateTime.now().add(const Duration(seconds: 30));
+    final adaptiveTime = _calculateAdaptiveTime();
+    final endsAt = DateTime.now().add(Duration(seconds: adaptiveTime));
+    print('⏱️ Démarrage du chronomètre avec $adaptiveTime secondes');
 
     FirebaseFirestore.instance.runTransaction((transaction) async {
       final roomRef = FirebaseFirestore.instance.collection('game_rooms').doc(
@@ -362,7 +379,7 @@ class OrdreMultiplayerController extends OrdreGameControllerBase {
     }).then((timerCreated) {
       if (timerCreated) {
         _startLocalCountdown();
-        _questionTimer = Timer(const Duration(seconds: 31), () {
+        _questionTimer = Timer(Duration(seconds: adaptiveTime + 1), () {
           if (!isGameFinished && _roomData['status'] != 'answered') {
             _endCurrentQuestion(forceTimeout: true);
           }

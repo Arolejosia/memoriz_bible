@@ -61,6 +61,28 @@ class NotificationService {
     );
   }
 
+  // Dans lib/services/notification_service.dart
+// Ajoutez cette méthode à la classe NotificationService :
+
+// Planifier un rappel de prière personnalisé
+  Future<void> schedulePrayerReminder({
+    required int id,
+    required String title,
+    required String body,
+    required TimeOfDay time,
+    required List<int> daysOfWeek, // 1 = Lundi, 7 = Dimanche
+  }) async {
+    for (final day in daysOfWeek) {
+      await scheduleWeekly(
+        hour: time.hour,
+        minute: time.minute,
+        days: [day],
+        title: title,
+        body: body,
+      );
+    }
+  }
+
   // Notification quotidienne
   Future<void> scheduleDaily({
     required int id,

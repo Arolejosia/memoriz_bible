@@ -2,6 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_file.dart';
+import 'package:memoriz_bible/prayer/providers/prayer_notes_provider.dart';
+import 'package:memoriz_bible/prayer/providers/prayer_timer_provider.dart';
 import 'package:memoriz_bible/screens/core/welcome_page.dart';
 import 'package:memoriz_bible/services/bible_validation_service.dart';
 import 'package:memoriz_bible/services/feedback_overlay.dart';
@@ -53,9 +55,28 @@ void main() async {
         ChangeNotifierProvider(
           create: (_) => ThemeProvider(),
         ),
+        ChangeNotifierProxyProvider<User?, PrayerTimerProvider?>(
+          create: (context) => null,
+          update: (context, user, previous) {
+            if (user?.uid != null) {
+              return PrayerTimerProvider(userId: user!.uid);
+            }
+            return null;
+          },
+        ),
+        ChangeNotifierProxyProvider<User?, PrayerNotesProvider?>(
+          create: (context) => null,
+          update: (context, user, previous) {
+            if (user?.uid != null) {
+              return PrayerNotesProvider(userId: user!.uid);
+            }
+            return null;
+          },
+        ),
       ],
       child: const MyApp(),
     ),
+
   );
 }
 

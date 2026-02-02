@@ -41,10 +41,11 @@ class _CustomQuestionsGameView extends StatelessWidget {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
 
+        // ✅ Utiliser la méthode du contrôleur pour extraire les bonnes réponses
         final questionsSummary = controller.questions.map((q) {
           return {
             'question': q['question'],
-            'answer': q['answer'] ?? '',
+            'answer': controller.getAnswerForSummary(Map<String, dynamic>.from(q)),
             'reference': q['reference'] ?? '',
             'type': q['type'],
           };
@@ -218,14 +219,28 @@ class _CustomQuestionsGameView extends StatelessWidget {
   Widget _buildQuestionWidget(BuildContext context, CustomQuestionsMultiplayerController controller) {
     final type = controller.currentQuestionType;
 
+    // ✅ Créer une clé unique basée sur l'index de la question actuelle
+    final currentQuestionIndex = controller.questions.indexOf(
+      controller.questions.firstWhere(
+            (q) => q['question'] == controller.questionText,
+        orElse: () => controller.questions.isNotEmpty ? controller.questions.first : {},
+      ),
+    );
+
     switch (type) {
       case 'qcm':
       case 'vraiFaux':
         return _buildQCMOrVraiFaux(context, controller);
       case 'texteTrous':
-        return _buildTexteTrous(context, controller);
+        return _TexteTrousWidget(
+          key: ValueKey('texte_trous_$currentQuestionIndex'), // ✅ CLÉ UNIQUE
+          controller: controller,
+        );
       case 'ouverte':
-        return _buildOuverte(context, controller);
+        return _OpenQuestionWidget(
+          key: ValueKey('open_question_$currentQuestionIndex'), // ✅ CLÉ UNIQUE
+          controller: controller,
+        );
       default:
         return Center(child: Text('${t(context, 'unknown_question_type')}: $type'));
     }
@@ -268,16 +283,52 @@ class _CustomQuestionsGameView extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildTexteTrous(BuildContext context, CustomQuestionsMultiplayerController controller) {
-    final questionText = controller.questionText;
-    final words = questionText.split(' ');
-    final blankIndices = controller.blankIndices;
-    final controllers = <int, TextEditingController>{};
+// ✅ NOUVEAU WIDGET STATEFUL POUR TEXTE À TROUS
+class _TexteTrousWidget extends StatefulWidget {
+  final CustomQuestionsMultiplayerController controller;
 
-    for (var i in blankIndices) {
-      controllers[i] = TextEditingController();
+  const _TexteTrousWidget({Key? key, required this.controller}) : super(key: key);
+
+  @override
+  State<_TexteTrousWidget> createState() => _TexteTrousWidgetState();
+}
+
+class _TexteTrousWidgetState extends State<_TexteTrousWidget> {
+  late Map<int, TextEditingController> _controllers;
+
+  @override
+  void initState() {
+    super.initState();
+    _controllers = {};
+    for (var i in widget.controller.blankIndices) {
+      _controllers[i] = TextEditingController();
     }
+    print('🔵 TextEditingControllers créés pour texte à trous (${_controllers.length} champs)');
+  }
+
+  @override
+  void dispose() {
+    print('🔴 TextEditingControllers détruits pour texte à trous');
+    for (var controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  String t(String key) {
+    final lang = context.read<LanguageProvider>().language;
+    return CustomQuestionsTranslations.t(key, lang);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    print('🟢 _TexteTrousWidget rebuild');
+
+    final questionText = widget.controller.questionText;
+    final words = questionText.split(' ');
+    final blankIndices = widget.controller.blankIndices;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -285,7 +336,7 @@ class _CustomQuestionsGameView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            t(context, 'complete_text'),
+            t('complete_text'),
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
@@ -298,13 +349,16 @@ class _CustomQuestionsGameView extends StatelessWidget {
                 return SizedBox(
                   width: 100,
                   child: TextField(
-                    controller: controllers[entry.key],
-                    enabled: !controller.iHaveAnswered,
+                    controller: _controllers[entry.key],
+                    enabled: !widget.controller.iHaveAnswered,
                     decoration: const InputDecoration(
                       hintText: '____',
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(horizontal: 8),
                     ),
+                    onChanged: (value) {
+                      print('📝 Texte à trous [${entry.key}]: $value');
+                    },
                   ),
                 );
               }
@@ -316,27 +370,62 @@ class _CustomQuestionsGameView extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: controller.iHaveAnswered
+            onPressed: widget.controller.iHaveAnswered
                 ? null
                 : () {
               final userAnswers = <int, String>{};
               for (var i in blankIndices) {
-                userAnswers[i] = controllers[i]!.text;
+                userAnswers[i] = _controllers[i]!.text;
               }
-              controller.submitTexteTrousAnswer(userAnswers);
+              print('✅ Soumission texte à trous: $userAnswers');
+              widget.controller.submitTexteTrousAnswer(userAnswers);
             },
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
             ),
-            child: Text(t(context, 'validate'), style: const TextStyle(fontSize: 18)),
+            child: Text(t('validate'), style: const TextStyle(fontSize: 18)),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildOuverte(BuildContext context, CustomQuestionsMultiplayerController controller) {
-    final textController = TextEditingController();
+// ✅ NOUVEAU WIDGET STATEFUL POUR LES QUESTIONS OUVERTES
+class _OpenQuestionWidget extends StatefulWidget {
+  final CustomQuestionsMultiplayerController controller;
+
+  const _OpenQuestionWidget({Key? key, required this.controller}) : super(key: key);
+
+  @override
+  State<_OpenQuestionWidget> createState() => _OpenQuestionWidgetState();
+}
+
+class _OpenQuestionWidgetState extends State<_OpenQuestionWidget> {
+  late TextEditingController _textController;
+
+  @override
+  void initState() {
+    super.initState();
+    _textController = TextEditingController();
+    print('🔵 TextEditingController créé pour question ouverte');
+  }
+
+  @override
+  void dispose() {
+    print('🔴 TextEditingController détruit pour question ouverte');
+    _textController.dispose();
+    super.dispose();
+  }
+
+  String t(String key) {
+    final lang = context.read<LanguageProvider>().language;
+    return CustomQuestionsTranslations.t(key, lang);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    print('🟢 _OpenQuestionWidget rebuild');
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -344,28 +433,34 @@ class _CustomQuestionsGameView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            controller.questionText,
+            widget.controller.questionText,
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
           TextField(
-            controller: textController,
+            controller: _textController,
             maxLines: 3,
-            enabled: !controller.iHaveAnswered,
+            enabled: !widget.controller.iHaveAnswered,
             decoration: InputDecoration(
-              hintText: t(context, 'your_answer_placeholder'),
+              hintText: t('your_answer_placeholder'),
               border: const OutlineInputBorder(),
             ),
+            onChanged: (value) {
+              print('📝 Question ouverte: $value');
+            },
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: controller.iHaveAnswered
+            onPressed: widget.controller.iHaveAnswered
                 ? null
-                : () => controller.submitOpenAnswer(textController.text),
+                : () {
+              print('✅ Soumission question ouverte: ${_textController.text}');
+              widget.controller.submitOpenAnswer(_textController.text);
+            },
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
             ),
-            child: Text(t(context, 'validate'), style: const TextStyle(fontSize: 18)),
+            child: Text(t('validate'), style: const TextStyle(fontSize: 18)),
           ),
         ],
       ),

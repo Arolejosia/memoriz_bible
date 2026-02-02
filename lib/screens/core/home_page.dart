@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:memoriz_bible/screens/core/settings_page.dart';
 import 'package:provider/provider.dart';
 import '../../Bibliotheque.dart';
+import '../../prayer/screens/prayer_home_screen.dart';
 import '../../widgets/main_drawer.dart';
 import '../../models/language_provider.dart';
 import '../auth/profile_page.dart';
@@ -11,6 +12,8 @@ import '../groups/groups_list_page.dart';
 import 'about_page.dart';
 import 'progression_dashboard_page.dart';
 import 'pageDeConfiguration.dart';
+
+
 
 
 class HomePage extends StatefulWidget {
@@ -227,10 +230,27 @@ class _HomePageState extends State<HomePage> {
                     );
                   },
                 ),
-
+                _buildCardTile(
+                  icon: Icons.access_time, // ou Icons.favorite ou Icons.self_improvement
+                  title: isEnglish ? "Prayer Time" : "Temps de Prière",
+                  subtitle: isEnglish
+                      ? "Track your daily prayer time and write spiritual notes."
+                      : "Suivez votre temps de prière quotidien et notez vos réflexions spirituelles.",
+                  color: Colors.deepPurple.shade400,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PrayerHomeScreen()),
+                    );
+                  },
+                ),
                 const SizedBox(height: 50),
+
               ],
             ),
+
+
+
           ),
 
           // --- BOUTON "?" EN HAUT À DROITE ---

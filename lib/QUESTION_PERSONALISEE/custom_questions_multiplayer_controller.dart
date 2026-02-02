@@ -504,7 +504,7 @@ class CustomQuestionsMultiplayerController extends QcmGameControllerBase {
         final List<Map<String, dynamic>> minimalSummary = _localQuestions.map((q) {
           return {
             "question": q["question"],
-            "answer": _getAnswerForSummary(q),
+            "answer": getAnswerForSummary(q), // ✅ UTILISE LA MÉTHODE PUBLIQUE
             "type": q["type"],
             "reference": q["reference"] ?? "",
           };
@@ -535,7 +535,8 @@ class CustomQuestionsMultiplayerController extends QcmGameControllerBase {
     });
   }
 
-  String _getAnswerForSummary(Map<String, dynamic> question) {
+  // ✅ MÉTHODE PUBLIQUE POUR EXTRAIRE LES BONNES RÉPONSES
+  String getAnswerForSummary(Map<String, dynamic> question) {
     final type = question['type'];
 
     switch (type) {
