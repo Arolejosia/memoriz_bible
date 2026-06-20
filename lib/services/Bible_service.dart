@@ -236,7 +236,7 @@ class BibleService {
         final response = await http
             .get(url, headers: _getHeaders(language))
             .timeout(
-          const Duration(seconds: 90),
+          const Duration(seconds: 120),
           onTimeout: () {
             throw TimeoutException('Timeout après 90 secondes');
           },
@@ -433,6 +433,20 @@ class BibleService {
   void clearCache() {
     _passageCache.clear();
     _scoreCache.clear();
+  }
+
+
+  /// Réveille le serveur Render au démarrage
+  Future<void> wakeUpServer() async {
+    try {
+      print("🔔 Wake up Render...");
+      await http
+          .get(Uri.parse('$_baseUrl/health'))
+          .timeout(const Duration(seconds: 30));
+      print("✅ Serveur réveillé !");
+    } catch (e) {
+      print("⚠️ Wake up failed (normal si premier démarrage): $e");
+    }
   }
 
   // ===================================================

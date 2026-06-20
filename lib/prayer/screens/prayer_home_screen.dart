@@ -46,9 +46,9 @@ class PrayerHomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Consumer<PrayerTimerProvider>(
+      body: Consumer<PrayerTimerProvider?>(
         builder: (context, timerProvider, child) {
-          if (timerProvider.isLoading) {
+          if (timerProvider == null || timerProvider.isLoading) {
             return const Center(
               child: CircularProgressIndicator(),
             );
@@ -196,7 +196,9 @@ class _NotePreviewCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                note.type.displayNameFr,
+                note.type == NoteType.autre && note.customTypeLabel != null
+                    ? '✏️ ${note.customTypeLabel}'
+                    : note.type.displayNameFr,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
@@ -248,12 +250,28 @@ class _NotePreviewCard extends StatelessWidget {
 
   Color _getTypeColor(NoteType type) {
     switch (type) {
-      case NoteType.intention:
-        return Colors.blue;
       case NoteType.gratitude:
         return Colors.green;
+      case NoteType.demande:
+        return Colors.blue;
+      case NoteType.intercession:
+        return Colors.pink;
       case NoteType.revelation:
         return Colors.purple;
+      case NoteType.meditation:
+        return Colors.teal;
+      case NoteType.confession:
+        return Colors.indigo;
+      case NoteType.louange:
+        return Colors.amber;
+      case NoteType.engagement:
+        return Colors.deepOrange;
+      case NoteType.combat:
+        return Colors.red;
+      case NoteType.temoignage:
+        return Colors.lightGreen;
+      case NoteType.autre:
+        return Colors.grey;
     }
   }
 
@@ -277,8 +295,9 @@ class _NotePreviewCard extends StatelessWidget {
 class _QuickStatsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Consumer<PrayerTimerProvider>(
+    return Consumer<PrayerTimerProvider?>(
       builder: (context, timerProvider, child) {
+        if (timerProvider == null) return const SizedBox.shrink();
         final stats = timerProvider.todayStats;
         if (stats == null) return const SizedBox.shrink();
 

@@ -2,29 +2,69 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum NoteType {
-  intention,
   gratitude,
-  revelation;
+  demande,
+  intercession,
+  revelation,
+  meditation,
+  confession,
+  louange,
+  engagement,
+  combat,
+  temoignage,
+  autre;
 
   String get displayNameFr {
     switch (this) {
-      case NoteType.intention:
-        return '🙏 Intention';
       case NoteType.gratitude:
         return '🙌 Gratitude';
+      case NoteType.demande:
+        return '🤲 Demande';
+      case NoteType.intercession:
+        return '❤️ Intercession';
       case NoteType.revelation:
         return '💡 Révélation';
+      case NoteType.meditation:
+        return '📖 Méditation';
+      case NoteType.confession:
+        return '🕊️ Confession';
+      case NoteType.louange:
+        return '🎶 Louange';
+      case NoteType.engagement:
+        return '🎯 Engagement';
+      case NoteType.combat:
+        return '⚔️ Combat';
+      case NoteType.temoignage:
+        return '✅ Témoignage';
+      case NoteType.autre:
+        return '✏️ Autre';
     }
   }
 
   String get displayNameEn {
     switch (this) {
-      case NoteType.intention:
-        return '🙏 Intention';
       case NoteType.gratitude:
         return '🙌 Gratitude';
+      case NoteType.demande:
+        return '🤲 Request';
+      case NoteType.intercession:
+        return '❤️ Intercession';
       case NoteType.revelation:
         return '💡 Revelation';
+      case NoteType.meditation:
+        return '📖 Meditation';
+      case NoteType.confession:
+        return '🕊️ Confession';
+      case NoteType.louange:
+        return '🎶 Praise';
+      case NoteType.engagement:
+        return '🎯 Commitment';
+      case NoteType.combat:
+        return '⚔️ Spiritual battle';
+      case NoteType.temoignage:
+        return '✅ Testimony';
+      case NoteType.autre:
+        return '✏️ Other';
     }
   }
 
@@ -38,6 +78,7 @@ class PrayerNote {
   final DateTime createdAt;
   final DateTime updatedAt;
   final NoteType type;
+  final String? customTypeLabel;
   final String content;
   final String? verseReference;
   final List<String> sessionIds;
@@ -48,6 +89,7 @@ class PrayerNote {
     required this.createdAt,
     required this.updatedAt,
     required this.type,
+    this.customTypeLabel,
     required this.content,
     this.verseReference,
     required this.sessionIds,
@@ -62,8 +104,9 @@ class PrayerNote {
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
       type: NoteType.values.firstWhere(
             (e) => e.name == data['type'],
-        orElse: () => NoteType.intention,
+        orElse: () => NoteType.gratitude,
       ),
+      customTypeLabel: data['customTypeLabel'],
       content: data['content'] ?? '',
       verseReference: data['verseReference'],
       sessionIds: List<String>.from(data['sessionIds'] ?? []),
@@ -76,6 +119,7 @@ class PrayerNote {
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'type': type.name,
+      'customTypeLabel': customTypeLabel,
       'content': content,
       'verseReference': verseReference,
       'sessionIds': sessionIds,
@@ -88,6 +132,7 @@ class PrayerNote {
     DateTime? createdAt,
     DateTime? updatedAt,
     NoteType? type,
+    String? customTypeLabel,
     String? content,
     String? verseReference,
     List<String>? sessionIds,
@@ -98,6 +143,7 @@ class PrayerNote {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       type: type ?? this.type,
+      customTypeLabel: customTypeLabel ?? this.customTypeLabel,
       content: content ?? this.content,
       verseReference: verseReference ?? this.verseReference,
       sessionIds: sessionIds ?? this.sessionIds,

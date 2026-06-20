@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-            'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -28,15 +25,9 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-              'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-              'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -67,4 +58,37 @@ class DefaultFirebaseOptions {
     storageBucket: 'memorizbible.firebasestorage.app',
     iosBundleId: 'com.ulrichjosia.memorizbible',
   );
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyAHHrPG0EyXWJHRnmnffuM8hU8Yk4GM9FU',
+    appId: '1:996341534126:web:2e893d9858b59517170c3f',
+    messagingSenderId: '996341534126',
+    projectId: 'memorizbible',
+    authDomain: 'memorizbible.firebaseapp.com',
+    databaseURL: 'https://memorizbible-default-rtdb.firebaseio.com',
+    storageBucket: 'memorizbible.firebasestorage.app',
+    measurementId: 'G-WGQR186MH4',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyBS7Yxx8tkwT56NzcskRcrnkS0JVX3l0B4',
+    appId: '1:996341534126:ios:9536d5c4f46405cf170c3f',
+    messagingSenderId: '996341534126',
+    projectId: 'memorizbible',
+    databaseURL: 'https://memorizbible-default-rtdb.firebaseio.com',
+    storageBucket: 'memorizbible.firebasestorage.app',
+    iosBundleId: 'com.example.memorizBible',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyAHHrPG0EyXWJHRnmnffuM8hU8Yk4GM9FU',
+    appId: '1:996341534126:web:32e9dd4b8bbbbf1c170c3f',
+    messagingSenderId: '996341534126',
+    projectId: 'memorizbible',
+    authDomain: 'memorizbible.firebaseapp.com',
+    databaseURL: 'https://memorizbible-default-rtdb.firebaseio.com',
+    storageBucket: 'memorizbible.firebasestorage.app',
+    measurementId: 'G-12P78MGQ7V',
+  );
+
 }

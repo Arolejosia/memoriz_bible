@@ -255,12 +255,28 @@ class _TypeFilterChips extends StatelessWidget {
 
   Color _getTypeColor(NoteType type) {
     switch (type) {
-      case NoteType.intention:
-        return Colors.blue;
       case NoteType.gratitude:
         return Colors.green;
+      case NoteType.demande:
+        return Colors.blue;
+      case NoteType.intercession:
+        return Colors.pink;
       case NoteType.revelation:
         return Colors.purple;
+      case NoteType.meditation:
+        return Colors.teal;
+      case NoteType.confession:
+        return Colors.indigo;
+      case NoteType.louange:
+        return Colors.amber;
+      case NoteType.engagement:
+        return Colors.deepOrange;
+      case NoteType.combat:
+        return Colors.red;
+      case NoteType.temoignage:
+        return Colors.lightGreen;
+      case NoteType.autre:
+        return Colors.grey;
     }
   }
 }
@@ -304,7 +320,9 @@ class _NoteCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      note.type.displayNameFr,
+                      note.type == NoteType.autre && note.customTypeLabel != null
+                          ? '✏️ ${note.customTypeLabel}'
+                          : note.type.displayNameFr,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -392,12 +410,28 @@ class _NoteCard extends StatelessWidget {
 
   Color _getTypeColor(NoteType type) {
     switch (type) {
-      case NoteType.intention:
-        return Colors.blue;
       case NoteType.gratitude:
         return Colors.green;
+      case NoteType.demande:
+        return Colors.blue;
+      case NoteType.intercession:
+        return Colors.pink;
       case NoteType.revelation:
         return Colors.purple;
+      case NoteType.meditation:
+        return Colors.teal;
+      case NoteType.confession:
+        return Colors.indigo;
+      case NoteType.louange:
+        return Colors.amber;
+      case NoteType.engagement:
+        return Colors.deepOrange;
+      case NoteType.combat:
+        return Colors.red;
+      case NoteType.temoignage:
+        return Colors.lightGreen;
+      case NoteType.autre:
+        return Colors.grey;
     }
   }
 

@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_file.dart';
 import 'package:memoriz_bible/prayer/providers/prayer_notes_provider.dart';
 import 'package:memoriz_bible/prayer/providers/prayer_timer_provider.dart';
 import 'package:memoriz_bible/screens/core/welcome_page.dart';
+import 'package:memoriz_bible/services/Bible_service.dart';
 import 'package:memoriz_bible/services/bible_validation_service.dart';
 import 'package:memoriz_bible/services/feedback_overlay.dart';
 import 'package:memoriz_bible/services/notification_service.dart';
@@ -12,13 +13,18 @@ import 'package:provider/provider.dart';
 import 'Bibliotheque.dart';
 import 'firebase_options.dart';
 import 'models/language_provider.dart';
+import 'package:flutter/foundation.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  await NotificationService.instance.init();
+  BibleService().wakeUpServer();
+  if (!kIsWeb) {
+    await NotificationService.instance.init();
+  }
+
 
 
   runApp(

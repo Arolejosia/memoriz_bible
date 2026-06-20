@@ -52,6 +52,7 @@ class PrayerNotesProvider extends ChangeNotifier {
   // Créer une nouvelle note
   Future<String?> createNote({
     required NoteType type,
+    String? customTypeLabel,
     required String content,
     String? verseReference,
     String? sessionId,
@@ -70,6 +71,7 @@ class PrayerNotesProvider extends ChangeNotifier {
         createdAt: now,
         updatedAt: now,
         type: type,
+        customTypeLabel: customTypeLabel,
         content: content,
         verseReference: verseReference,
         sessionIds: sessionId != null ? [sessionId] : [],
@@ -96,6 +98,7 @@ class PrayerNotesProvider extends ChangeNotifier {
     required String noteId,
     String? content,
     NoteType? type,
+    String? customTypeLabel,
     String? verseReference,
     List<String>? tags,
   }) async {
@@ -110,6 +113,7 @@ class PrayerNotesProvider extends ChangeNotifier {
       final updatedNote = existingNote.copyWith(
         content: content,
         type: type,
+        customTypeLabel: customTypeLabel,
         verseReference: verseReference,
         tags: tags,
         updatedAt: DateTime.now(),
@@ -123,6 +127,7 @@ class PrayerNotesProvider extends ChangeNotifier {
           .update({
         if (content != null) 'content': content,
         if (type != null) 'type': type.name,
+        'customTypeLabel': customTypeLabel,
         if (verseReference != null) 'verseReference': verseReference,
         if (tags != null) 'tags': tags,
         'updatedAt': Timestamp.fromDate(DateTime.now()),
