@@ -580,7 +580,7 @@ class _ScoreDisplay extends StatelessWidget {
 }
 
 // ==============================================================================
-// GAME CONTENT
+// GAME CONTENT — Layout 2 colonnes (Word Bank à gauche, Réponse à droite)
 // ==============================================================================
 class _GameContent extends StatelessWidget {
   final OrdreGameControllerBase controller;
@@ -602,36 +602,41 @@ class _GameContent extends StatelessWidget {
       builder: (context, constraints) {
         final isSmallScreen = constraints.maxHeight < 600;
 
-        return Stack(
-          children: [
-            Column(
-              children: [
-                Padding(
-                  padding: EdgeInsets.all(isSmallScreen ? 12.0 : 20.0),
-                  child: Column(
-                    children: [
-                      _QuestionCard(controller: controller),
-                      if (controller is OrdreMultiplayerController &&
-                          controller.status == 'answered')
-                        _RoundFeedback(
-                            controller: controller as OrdreMultiplayerController),
-                      const SizedBox(height: 16),
-                      _AnswerZone(controller: controller),
-                      SizedBox(height: isSmallScreen ? 12 : 20),
-                    ],
-                  ),
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            isSmallScreen ? 12.0 : 20.0,
+            isSmallScreen ? 12.0 : 20.0,
+            isSmallScreen ? 12.0 : 20.0,
+            90, // espace réservé pour le bouton flottant en bas
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _QuestionCard(controller: controller),
+              if (controller is OrdreMultiplayerController &&
+                  controller.status == 'answered')
+                _RoundFeedback(
+                    controller: controller as OrdreMultiplayerController),
+              const SizedBox(height: 16),
+              // === Layout 2 colonnes côte à côte ===
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Colonne gauche : Word Bank
+                    Expanded(
+                      child: _WordBankColumn(controller: controller),
+                    ),
+                    const SizedBox(width: 12),
+                    // Colonne droite : Zone de réponse
+                    Expanded(
+                      child: _AnswerColumn(controller: controller),
+                    ),
+                  ],
                 ),
-                Expanded(child: Container()),
-              ],
-            ),
-            Positioned(
-              bottom: 80,
-              left: 16,
-              right: 16,
-              top: constraints.maxHeight * 0.5,
-              child: _FloatingWordBank(controller: controller),
-            ),
-          ],
+              ),
+            ],
+          ),
         );
       },
     );
@@ -639,12 +644,12 @@ class _GameContent extends StatelessWidget {
 }
 
 // ==============================================================================
-// FLOATING WORD BANK
+// WORD BANK COLUMN (gauche)
 // ==============================================================================
-class _FloatingWordBank extends StatelessWidget {
+class _WordBankColumn extends StatelessWidget {
   final OrdreGameControllerBase controller;
 
-  const _FloatingWordBank({required this.controller});
+  const _WordBankColumn({required this.controller});
 
   String t(BuildContext context, String key) {
     final lang = context.read<LanguageProvider>().language;
@@ -655,17 +660,13 @@ class _FloatingWordBank extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.white.withValues(alpha: 0.95), Colors.white],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 8,
-            offset: const Offset(0, -2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -681,41 +682,45 @@ class _FloatingWordBank extends StatelessWidget {
         builder: (context, candidateData, rejectedData) {
           return Column(
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
+              Padding(
+                padding: const EdgeInsets.all(10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
                       Icons.library_books_rounded,
                       color: Colors.grey.shade600,
-                      size: 18,
+                      size: 16,
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      t(context, 'word_bank'),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade700,
-                        fontSize: 14,
+                    Flexible(
+                      child: Text(
+                        t(context, 'word_bank'),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
+                          fontSize: 13,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ),
               ),
+              const Divider(height: 1),
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.all(12),
-                  child: Wrap(
-                    spacing: 8.0,
-                    runSpacing: 8.0,
-                    alignment: WrapAlignment.center,
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
                     children: controller.wordBank
-                        .map((word) => _DraggableWord(
-                      controller: controller,
-                      word: word,
-                      fromIndex: null,
+                        .map((word) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _DraggableWord(
+                        controller: controller,
+                        word: word,
+                        fromIndex: null,
+                      ),
                     ))
                         .toList(),
                   ),
@@ -815,6 +820,7 @@ class _QuestionCard extends StatelessWidget {
     );
   }
 }
+
 class _RoundFeedback extends StatelessWidget {
   final OrdreMultiplayerController controller;
 
@@ -902,21 +908,26 @@ class _RoundFeedback extends StatelessWidget {
 }
 
 // ==============================================================================
-// ANSWER ZONE
+// ANSWER COLUMN (droite)
 // ==============================================================================
-class _AnswerZone extends StatefulWidget {
+class _AnswerColumn extends StatefulWidget {
   final OrdreGameControllerBase controller;
 
-  const _AnswerZone({required this.controller});
+  const _AnswerColumn({required this.controller});
 
   @override
-  State<_AnswerZone> createState() => _AnswerZoneState();
+  State<_AnswerColumn> createState() => _AnswerColumnState();
 }
 
-class _AnswerZoneState extends State<_AnswerZone>
+class _AnswerColumnState extends State<_AnswerColumn>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+
+  String t(BuildContext context, String key) {
+    final lang = context.read<LanguageProvider>().language;
+    return OrdreTranslations.t(key, lang);
+  }
 
   @override
   void initState() {
@@ -925,7 +936,7 @@ class _AnswerZoneState extends State<_AnswerZone>
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.03).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
   }
@@ -952,7 +963,6 @@ class _AnswerZoneState extends State<_AnswerZone>
         return Transform.scale(
           scale: widget.controller.isAnswered ? _pulseAnimation.value : 1.0,
           child: Container(
-            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -972,34 +982,51 @@ class _AnswerZoneState extends State<_AnswerZone>
                     : Colors.grey.shade300,
                 width: 2,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: (widget.controller.isAnswered
-                      ? isCorrect
-                      ? Colors.green
-                      : Colors.red
-                      : Colors.grey)
-                      .withValues(alpha: 0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 200),
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Wrap(
-                  spacing: 8.0,
-                  runSpacing: 8.0,
-                  alignment: WrapAlignment.center,
-                  children: List.generate(
-                    widget.controller.placedWords.length,
-                        (index) => _DropTarget(
-                        controller: widget.controller, index: index),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.reorder_rounded,
+                          color: Colors.grey.shade700, size: 16),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          // ⚠️ Si la clé 'your_answer' n'existe pas encore dans
+                          // ordre_translations.dart, ajoute-la (FR: "Ta réponse",
+                          // EN: "Your answer"). En attendant, fallback visuel simple.
+                          t(context, 'your_answer'),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade700,
+                            fontSize: 13,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.all(10),
+                    child: Column(
+                      children: List.generate(
+                        widget.controller.placedWords.length,
+                            (index) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _DropTarget(
+                              controller: widget.controller, index: index),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -1066,6 +1093,7 @@ class _DropTargetState extends State<_DropTarget>
               scale: _bounceAnimation.value,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
+                width: double.infinity,
                 padding:
                 const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 decoration: BoxDecoration(
@@ -1091,6 +1119,7 @@ class _DropTargetState extends State<_DropTarget>
                 ),
                 child: Text(
                   '...',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.grey.shade500,
                     fontWeight: FontWeight.w500,
@@ -1182,7 +1211,8 @@ class _DraggableWordState extends State<_DraggableWord>
               child: Transform.scale(
                 scale: 1.1,
                 child: _buildWordChip(
-                    backgroundColor, fontColor, borderColor, true),
+                    backgroundColor, fontColor, borderColor, true,
+                    constrainWidth: false),
               ),
             ),
             childWhenDragging: Opacity(
@@ -1206,8 +1236,10 @@ class _DraggableWordState extends State<_DraggableWord>
   }
 
   Widget _buildWordChip(Color backgroundColor, Color fontColor,
-      Color borderColor, bool isFeedback) {
+      Color borderColor, bool isFeedback,
+      {bool constrainWidth = true}) {
     return Container(
+      width: constrainWidth ? double.infinity : null,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -1237,6 +1269,7 @@ class _DraggableWordState extends State<_DraggableWord>
       ),
       child: Text(
         widget.word,
+        textAlign: TextAlign.center,
         style: TextStyle(
           color: fontColor,
           fontWeight: FontWeight.w600,
@@ -1721,4 +1754,3 @@ class _CorrectAnswerAnimationState extends State<CorrectAnswerAnimation>
     });
   }
 }
-// Continuons dans le prochain message...

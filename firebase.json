@@ -1,1 +1,12 @@
-{"hosting":{"public":"build/web","ignore":["firebase.json","**/.*","**/node_modules/**"],"rewrites":[{"source":"**","destination":"/index.html"}]},"flutter":{"platforms":{"android":{"default":{"projectId":"memorizbible","appId":"1:996341534126:android:f2a9b7ec9ed692a8170c3f","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"memorizbible","configurations":{"android":"1:996341534126:android:f2a9b7ec9ed692a8170c3f","ios":"1:996341534126:ios:1acf875be6475906170c3f","macos":"1:996341534126:ios:9536d5c4f46405cf170c3f","web":"1:996341534126:web:2e893d9858b59517170c3f","windows":"1:996341534126:web:32e9dd4b8bbbbf1c170c3f"}}}}}}
+{
+  "hosting":{
+    "public":"build/web",
+    "ignore":[
+      "firebase.json",
+      "**/.*","**/node_modules/**"
+    ],
+    "rewrites":[
+      {
+        "source":"**",
+        "destination":"/index.html"
+      }]},"flutter":{"platforms":{"android":{"default":{"projectId":"memorizbible","appId":"1:996341534126:android:f2a9b7ec9ed692a8170c3f","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"memorizbible","configurations":{"android":"1:996341534126:android:f2a9b7ec9ed692a8170c3f","ios":"1:996341534126:ios:1acf875be6475906170c3f","macos":"1:996341534126:ios:9536d5c4f46405cf170c3f","web":"1:996341534126:web:2e893d9858b59517170c3f","windows":"1:996341534126:web:32e9dd4b8bbbbf1c170c3f"}}}}}}

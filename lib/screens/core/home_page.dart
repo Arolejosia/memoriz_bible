@@ -8,6 +8,7 @@ import '../../prayer/screens/prayer_home_screen.dart';
 import '../../widgets/main_drawer.dart';
 import '../../models/language_provider.dart';
 import '../auth/profile_page.dart';
+import '../badges_screen.dart';
 import '../groups/groups_list_page.dart';
 import 'about_page.dart';
 import 'progression_dashboard_page.dart';
@@ -193,24 +194,35 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 16),
 
                 _buildCardTile(
-                  icon: Icons.book,
-                  title: isEnglish ? "Library" : "Bibliothèque",
+                  icon: Icons.access_time, // ou Icons.favorite ou Icons.self_improvement
+                  title: isEnglish ? "Prayer Time" : "Temps de Prière",
                   subtitle: isEnglish
-                      ? "Explore all your memorized and favorite verses."
-                      : "Explorez tous vos versets mémorisés et vos favoris.",
-                  color: Colors.orange.shade400,
+                      ? "Track your daily prayer time and write spiritual notes."
+                      : "Suivez votre temps de prière quotidien et notez vos réflexions spirituelles.",
+                  color: Colors.deepPurple.shade400,
                   onTap: () {
-
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => VerseLibraryPage(
-                          language: context.read<LanguageProvider>().language,
-                        ),
-                      ),
+                      MaterialPageRoute(builder: (context) => const PrayerHomeScreen()),
                     );
                   },
                 ),
+                const SizedBox(height: 16), // ⬅️ AJOUT
+                _buildCardTile(               // ⬅️ AJOUT — nouvelle carte Badges
+                  icon: Icons.emoji_events,
+                  title: isEnglish ? "My Badges" : "Mes Badges",
+                  subtitle: isEnglish
+                      ? "Track your daily engagement and unlock rewards."
+                      : "Suivez votre engagement quotidien et débloquez des récompenses.",
+                  color: Colors.amber.shade600,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const BadgesScreen()),
+                    );
+                  },
+                ),
+                const SizedBox(height: 50),
 
                 const SizedBox(height: 16),
 

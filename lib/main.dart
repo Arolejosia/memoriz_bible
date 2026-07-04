@@ -1,22 +1,29 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/date_symbol_data_file.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:memoriz_bible/prayer/providers/prayer_notes_provider.dart';
 import 'package:memoriz_bible/prayer/providers/prayer_timer_provider.dart';
 import 'package:memoriz_bible/screens/core/welcome_page.dart';
+import 'package:memoriz_bible/screens/public/privacy_page.dart';
+import 'package:memoriz_bible/screens/public/support_page.dart';
+import 'package:memoriz_bible/screens/public/terms_page.dart';
 import 'package:memoriz_bible/services/Bible_service.dart';
 import 'package:memoriz_bible/services/bible_validation_service.dart';
 import 'package:memoriz_bible/services/feedback_overlay.dart';
 import 'package:memoriz_bible/services/notification_service.dart';
+import 'package:memoriz_bible/widgets/badge_listener_wrapper.dart';
 import 'package:provider/provider.dart';
 import 'Bibliotheque.dart';
+import 'badges/providers/badge_provider.dart';
 import 'firebase_options.dart';
 import 'models/language_provider.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  usePathUrlStrategy();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -24,8 +31,6 @@ void main() async {
   if (!kIsWeb) {
     await NotificationService.instance.init();
   }
-
-
 
   runApp(
     MultiProvider(
@@ -36,14 +41,14 @@ void main() async {
           initialData: null,
         ),
 
-        // 👇 MODIFIÉ : LanguageProvider doit être AVANT VerseLibrary
-        // MODIFIED: LanguageProvider must be BEFORE VerseLibrary
+        // LanguageProvider doit être AVANT VerseLibrary
+        // LanguageProvider must be BEFORE VerseLibrary
         ChangeNotifierProvider(
           create: (_) => LanguageProvider(),
         ),
 
-        // 👇 MODIFIÉ : VerseLibrary avec support bilingue
-        // MODIFIED: VerseLibrary with bilingual support
+        // VerseLibrary avec support bilingue
+        // VerseLibrary with bilingual support
         ChangeNotifierProxyProvider2<User?, LanguageProvider, VerseLibrary>(
           create: (context) {
             final user = context.read<User?>();
@@ -79,52 +84,82 @@ void main() async {
             return null;
           },
         ),
+        ChangeNotifierProxyProvider<User?, BadgeProvider?>(
+          create: (context) => null,
+          update: (context, user, previous) {
+            if (user?.uid != null) {
+              return BadgeProvider(userId: user!.uid);
+            }
+            return null;
+          },
+        ),
       ],
       child: const MyApp(),
     ),
-
   );
 }
+
+/// Route generator partagé entre l'écran de chargement et l'app complète.
+/// Shared route generator between the loading screen and the full app.
+/// [defaultBuilder] définit ce qui s'affiche pour "/" ou toute route inconnue.
+Route<dynamic> _generateAppRoute(
+    RouteSettings settings,
+    Widget Function(BuildContext) defaultBuilder,
+    ) {
+  switch (settings.name) {
+    case '/support':
+      return MaterialPageRoute(builder: (_) => const SupportPage());
+    case '/privacy':
+      return MaterialPageRoute(builder: (_) => const PrivacyPage());
+    case '/terms':
+      return MaterialPageRoute(builder: (_) => const TermsPage());
+    default:
+      return MaterialPageRoute(builder: defaultBuilder);
+  }
+}
+
+const Widget _loadingScreen = Scaffold(
+  body: Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        CircularProgressIndicator(),
+        SizedBox(height: 16),
+        Text('Chargement... / Loading...'),
+      ],
+    ),
+  ),
+);
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // 👇 AJOUTÉ : Attendre l'initialisation de la langue
-    // ADDED: Wait for language initialization
-    return Consumer2<ThemeProvider, LanguageProvider>(
-      builder: (context, themeProvider, languageProvider, child) {
-        // Afficher un écran de chargement pendant l'initialisation
-        // Show loading screen during initialization
-        if (!languageProvider.isInitialized) {
-          return MaterialApp(
-            debugShowCheckedModeBanner: false,
-            theme: futuristicLightTheme,
-            darkTheme: futuristicDarkTheme,
-            themeMode: themeProvider.themeMode,
-            home: const Scaffold(
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Chargement... / Loading...'),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }
-
+    // Un seul MaterialApp / Navigator, créé une seule fois.
+    // L'attente de l'initialisation de la langue est gérée À L'INTÉRIEUR
+    // du builder par défaut (via Consumer), pas en remplaçant tout le MaterialApp.
+    // Ça évite de recréer le Navigator (et donc de perdre la route initiale
+    // comme /support, /privacy, /terms) quand isInitialized change.
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
         return MaterialApp(
           title: 'Memoriz Bible',
           debugShowCheckedModeBanner: false,
           theme: futuristicLightTheme,
           darkTheme: futuristicDarkTheme,
           themeMode: themeProvider.themeMode,
-          home: WelcomePage(),
+          onGenerateRoute: (settings) => _generateAppRoute(
+            settings,
+                (_) => Consumer<LanguageProvider>(
+              builder: (context, languageProvider, __) {
+                if (!languageProvider.isInitialized) {
+                  return _loadingScreen;
+                }
+                return const WelcomePage();
+              },
+            ),
+          ),
         );
       },
     );
