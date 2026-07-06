@@ -12,6 +12,7 @@ import 'package:memoriz_bible/services/Bible_service.dart';
 import 'package:memoriz_bible/services/bible_validation_service.dart';
 import 'package:memoriz_bible/services/feedback_overlay.dart';
 import 'package:memoriz_bible/services/notification_service.dart';
+import 'package:memoriz_bible/url_strategie_stub.dart';
 import 'package:memoriz_bible/widgets/badge_listener_wrapper.dart';
 import 'package:provider/provider.dart';
 import 'Bibliotheque.dart';
@@ -19,11 +20,12 @@ import 'badges/providers/badge_provider.dart';
 import 'firebase_options.dart';
 import 'models/language_provider.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_web_plugins/flutter_web_plugins.dart';
+
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  usePathUrlStrategy();
+  configureUrlStrategy();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
