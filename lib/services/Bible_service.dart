@@ -18,6 +18,7 @@ class VerseData {
       text: json['text'] ?? 'Texte non trouvé.',
     );
   }
+
 }
 
 class ReferenceQuestion {
@@ -171,7 +172,25 @@ class TexteATrousData {
     );
   }
 }
+class BibleBookInfo {
+  final String nom;
+  final int nbChapitres;
+  final String testament;
 
+  BibleBookInfo({
+    required this.nom,
+    required this.nbChapitres,
+    required this.testament,
+  });
+
+  factory BibleBookInfo.fromJson(Map<String, dynamic> json) {
+    return BibleBookInfo(
+      nom: json['nom'] ?? '',
+      nbChapitres: json['nb_chapitres'] ?? 0,
+      testament: json['testament'] ?? 'AT',
+    );
+  }
+}
 class BibleService {
   static final BibleService _instance = BibleService._internal();
   factory BibleService() => _instance;
@@ -180,6 +199,8 @@ class BibleService {
   final String _baseUrl = "https://memoriz-bible-api.onrender.com";
   final Map<String, List<VerseData>> _passageCache = {};
   final Map<String, double> _scoreCache = {};
+  final List<BibleBookInfo> _livresCache = [];
+  String? _livresCacheLanguage;
 
   // Créer les headers avec la langue
   Map<String, String> _getHeaders(String language) {
@@ -279,6 +300,40 @@ class BibleService {
     return _getFallbackVerses(reference, language);
   }
 
+  Future<List<BibleBookInfo>> getLivres({String language = 'fr'}) async {
+    if (_livresCacheLanguage == language && _livresCache.isNotEmpty) {
+      print("✅ Cache hit pour la liste des livres ($language)");
+      return _livresCache;
+    }
+
+    final url = Uri.parse('$_baseUrl/livres');
+    try {
+      final response = await http
+          .get(url, headers: _getHeaders(language))
+          .timeout(const Duration(seconds: 60));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(utf8.decode(response.bodyBytes)) as List;
+        final livres = decoded
+            .map((item) => BibleBookInfo.fromJson(item as Map<String, dynamic>))
+            .toList();
+
+        _livresCache
+          ..clear()
+          ..addAll(livres);
+        _livresCacheLanguage = language;
+
+        print("✅ ${livres.length} livres chargés ($language)");
+        return livres;
+      } else {
+        print("❌ Erreur HTTP ${response.statusCode} sur /livres");
+        return [];
+      }
+    } catch (e) {
+      print("❌ ERREUR dans getLivres : $e");
+      return [];
+    }
+  }
   /// Textes de secours bilingues
   List<VerseData> _getFallbackVerses(String reference, String language) {
     print("🔄 Utilisation du texte de secours pour: $reference ($language)");

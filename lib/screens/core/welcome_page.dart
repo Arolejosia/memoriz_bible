@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:provider/provider.dart';
+import '../../services/Bible_service.dart';
 import '../auth/auth_gate.dart';
 import 'intro_page.dart';
 import '../../models/language_provider.dart';
@@ -28,7 +29,11 @@ class _WelcomePageState extends State<WelcomePage>
   @override
   void initState() {
     super.initState();
-
+    BibleService().getLivres().then((livres) {
+      for (var l in livres) {
+        print("📖 ${l.nom} — ${l.nbChapitres} chapitres (${l.testament})");
+      }
+    });
     _fadeController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,

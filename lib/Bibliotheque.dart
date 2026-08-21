@@ -990,7 +990,20 @@ class _VerseLibraryPageState extends State<VerseLibraryPage> {
     final versetDebutController = TextEditingController();
     final versetFinController = TextEditingController();
     final categoryController = TextEditingController();
-    final suggestions = library.recommendedCategories.map((c) => c.name).toList();
+    final recommendedCategories =
+    library.recommendedCategories.map((c) => c.name);
+
+    final userCategories = library.myVerseCategories
+        .expand((category) => category.verses)
+        .map((verse) => verse.category)
+        .whereType<String>()
+        .where((category) => category.trim().isNotEmpty);
+
+    final suggestions = {
+      ...recommendedCategories,
+      ...userCategories,
+    }.toList()
+      ..sort();
     // ✅ CORRECTION 7: Utiliser 'lang'
     String? selectedBook = lang == 'en' ? "John" : "Jean";
 

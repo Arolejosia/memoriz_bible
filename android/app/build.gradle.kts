@@ -16,7 +16,7 @@ android {
 
     namespace = "com.example.memoriz_bible"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    ndkVersion = "28.2.13676358"
 
     val keystorePropertiesFile = rootProject.file("key.properties")
     val keystoreProperties = Properties()
@@ -40,7 +40,7 @@ android {
         applicationId = "com.ulrich_josia.memoriz_bible"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 23
+        minSdk = flutter.minSdkVersion
         targetSdk = 35
         versionCode = 13
         versionName = "1.0.8"

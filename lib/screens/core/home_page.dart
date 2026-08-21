@@ -11,6 +11,7 @@ import '../auth/profile_page.dart';
 import '../badges_screen.dart';
 import '../groups/groups_list_page.dart';
 import 'about_page.dart';
+import 'bible_reader_page.dart';
 import 'progression_dashboard_page.dart';
 import 'pageDeConfiguration.dart';
 
@@ -192,10 +193,24 @@ class _HomePageState extends State<HomePage> {
                   textAlign: TextAlign.left,
                 ),
                 const SizedBox(height: 16),
-
+                _buildCardTile(
+                  icon: Icons.menu_book,
+                  title: isEnglish ? "Read the Bible" : "Lire la Bible",
+                  subtitle: isEnglish
+                      ? "Browse books and chapters, select verses to memorize."
+                      : "Parcourez les livres et chapitres, sélectionnez des versets à mémoriser.",
+                  color: Colors.brown.shade400,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const BibleReaderPage()),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
                 _buildCardTile(
                   icon: Icons.access_time, // ou Icons.favorite ou Icons.self_improvement
-                  title: isEnglish ? "Prayer Time" : "Temps de Prière",
+                  title: isEnglish ? "Meditation" : "Méditation",
                   subtitle: isEnglish
                       ? "Track your daily prayer time and write spiritual notes."
                       : "Suivez votre temps de prière quotidien et notez vos réflexions spirituelles.",
@@ -222,7 +237,7 @@ class _HomePageState extends State<HomePage> {
                     );
                   },
                 ),
-                const SizedBox(height: 50),
+
 
                 const SizedBox(height: 16),
 
@@ -242,21 +257,7 @@ class _HomePageState extends State<HomePage> {
                     );
                   },
                 ),
-                _buildCardTile(
-                  icon: Icons.access_time, // ou Icons.favorite ou Icons.self_improvement
-                  title: isEnglish ? "Prayer Time" : "Temps de Prière",
-                  subtitle: isEnglish
-                      ? "Track your daily prayer time and write spiritual notes."
-                      : "Suivez votre temps de prière quotidien et notez vos réflexions spirituelles.",
-                  color: Colors.deepPurple.shade400,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const PrayerHomeScreen()),
-                    );
-                  },
-                ),
-                const SizedBox(height: 50),
+
 
               ],
             ),
@@ -351,6 +352,7 @@ class _HomePageState extends State<HomePage> {
       ],
     );
   }
+
 
   // --- Carte "accès rapide" ---
   Widget _buildCardTile({
