@@ -19,7 +19,7 @@ workflows:
         XCODE_WORKSPACE: "Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
         APPLE_TEAM_ID: "W6M3PAXV6L"
-        APP_VERSION: "1.0.0"
+        APP_VERSION: "1.0.10"
 
       flutter: stable
       xcode: latest
@@ -168,7 +168,7 @@ workflows:
         script: |
           flutter build ipa --release \
             --build-name=$APP_VERSION \
-            --build-number=$BUILD_NUMBER \
+            --build-number=22 \
             --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
