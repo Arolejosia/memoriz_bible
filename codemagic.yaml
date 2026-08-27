@@ -19,7 +19,7 @@ workflows:
         XCODE_WORKSPACE: "Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
         APPLE_TEAM_ID: "W6M3PAXV6L"
-        APP_VERSION: "1.0.11"
+        APP_VERSION: "1.0.12"
 
       flutter: stable
       xcode: latest
