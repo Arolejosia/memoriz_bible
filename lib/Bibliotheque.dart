@@ -95,6 +95,9 @@ class AppTranslations {
       'save': {'fr': 'Enregistrer', 'en': 'Save'},
       'category_deleted': {'fr': 'Catégorie supprimée', 'en': 'Category deleted'},
       'category_updated': {'fr': 'Catégorie mise à jour', 'en': 'Category updated'},
+      // 👈 AJOUT : nouvelles clés pour l'ajout direct dans une catégorie
+      'add_verse_here': {'fr': 'Ajouter un verset ici', 'en': 'Add a verse here'},
+      'category_locked': {'fr': 'Catégorie verrouillée sur', 'en': 'Category locked to'},
     };
     return translations[key]?[lang] ?? key;
   }
@@ -688,42 +691,77 @@ class _VerseLibraryPageState extends State<VerseLibraryPage> {
                 title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text("${versesInCategory.length} ${t('verses_count')}"),
                 initiallyExpanded: _searchQuery.isNotEmpty,
-                children: versesInCategory.map((verse) {
-                  return ListTile(
-                    title: Text(verse.reference),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("${t('progression')}: ${verse.progressLevel}/5"),
-                        if (verse.category != null && verse.category!.isNotEmpty)
-                        // ✅ CORRECTION 4: Traduire aussi la catégorie dans le sous-titre
+                children: [
+                  // 👈 AJOUT : bouton "Ajouter un verset ici", verrouillé sur cette catégorie.
+                  // Placé en premier dans la liste dépliée, avant les vrais versets,
+                  // avec un style pointillé pour bien le distinguer visuellement.
+                  InkWell(
+                    onTap: () => _showAddVerseDialog(context, presetCategory: categoryName),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Colors.blue.shade200,
+                          style: BorderStyle.solid,
+                          width: 1.2,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.blue.shade50,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.add_circle_outline, size: 18, color: Colors.blue.shade700),
+                          const SizedBox(width: 8),
                           Text(
-                              "${t('category')}: ${BookTranslations.translate(verse.category!, lang)}",
-                              style: TextStyle(fontSize: 12, color: Colors.blue[700])
+                            t('add_verse_here'),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.blue.shade700,
+                            ),
                           ),
-                      ],
+                        ],
+                      ),
                     ),
-                    trailing: Row(
-                      // ... (trailing row inchangé)
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text("${verse.progressLevel}/5"),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.blue),
-                          onPressed: () => _showEditCategoryDialog(context, verse, library),
-                          tooltip: t('edit_category'),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _showDeleteConfirmation(context, verse, library),
-                          tooltip: t('delete'),
-                        ),
-                      ],
-                    ),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => VerseDetailPage(verse: verse))),
-                  );
-                }).toList(),
+                  ),
+                  ...versesInCategory.map((verse) {
+                    return ListTile(
+                      title: Text(verse.reference),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("${t('progression')}: ${verse.progressLevel}/5"),
+                          if (verse.category != null && verse.category!.isNotEmpty)
+                          // ✅ CORRECTION 4: Traduire aussi la catégorie dans le sous-titre
+                            Text(
+                                "${t('category')}: ${BookTranslations.translate(verse.category!, lang)}",
+                                style: TextStyle(fontSize: 12, color: Colors.blue[700])
+                            ),
+                        ],
+                      ),
+                      trailing: Row(
+                        // ... (trailing row inchangé)
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text("${verse.progressLevel}/5"),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () => _showEditCategoryDialog(context, verse, library),
+                            tooltip: t('edit_category'),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _showDeleteConfirmation(context, verse, library),
+                            tooltip: t('delete'),
+                          ),
+                        ],
+                      ),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => VerseDetailPage(verse: verse))),
+                    );
+                  }),
+                ],
               ),
             );
           }),
@@ -950,7 +988,12 @@ class _VerseLibraryPageState extends State<VerseLibraryPage> {
     );
   }
 
-  Future<void> _showAddVerseDialog(BuildContext context) async {
+  // 👈 MODIFIÉ : ajout du paramètre optionnel 'presetCategory'.
+  // Quand il est fourni (depuis le bouton "Ajouter un verset ici" d'une
+  // catégorie), le champ catégorie est pré-rempli ET verrouillé en lecture
+  // seule, pour garantir que le verset atterrit exactement dans cette
+  // catégorie sans risque de faute de frappe créant un doublon.
+  Future<void> _showAddVerseDialog(BuildContext context, {String? presetCategory}) async {
     // ✅ CORRECTION 7: Lire la langue depuis le Provider
     final lang = context.read<LanguageProvider>().language;
     final library = context.read<VerseLibrary>();
@@ -989,7 +1032,8 @@ class _VerseLibraryPageState extends State<VerseLibraryPage> {
     final chapitreController = TextEditingController();
     final versetDebutController = TextEditingController();
     final versetFinController = TextEditingController();
-    final categoryController = TextEditingController();
+    // 👈 MODIFIÉ : pré-rempli avec presetCategory si fourni
+    final categoryController = TextEditingController(text: presetCategory ?? "");
     final recommendedCategories =
     library.recommendedCategories.map((c) => c.name);
 
@@ -1059,23 +1103,38 @@ class _VerseLibraryPageState extends State<VerseLibraryPage> {
                   const SizedBox(height: 24),
                   Text(t('category_optional'), style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.indigo)),
                   const SizedBox(height: 8),
-                  Autocomplete<String>(
-                    optionsBuilder: (TextEditingValue value) {
-                      if (value.text.isEmpty) return suggestions;
-                      return suggestions.where((cat) => cat.toLowerCase().contains(value.text.toLowerCase()));
-                    },
-                    onSelected: (String selection) => categoryController.text = selection,
-                    fieldViewBuilder: (context, controller, focusNode, onSubmit) {
-                      controller.text = categoryController.text;
-                      controller.addListener(() => categoryController.text = controller.text);
-                      return TextFormField(
-                        controller: controller,
-                        focusNode: focusNode,
-                        // ✅ CORRECTION 7: Utiliser 'lang'
-                        decoration: _inputDecoration(t('category'), hint: lang == 'fr' ? "Ex: Confiance" : "Ex: Trust"),
-                      );
-                    },
-                  ),
+                  // 👈 MODIFIÉ : si presetCategory est fourni, champ verrouillé
+                  // en lecture seule avec un cadenas, plutôt que l'Autocomplete
+                  // habituel — on ne veut pas que l'utilisateur puisse le
+                  // changer par erreur depuis ce point d'entrée.
+                  if (presetCategory != null)
+                    TextFormField(
+                      controller: categoryController,
+                      readOnly: true,
+                      enabled: false,
+                      decoration: _inputDecoration(t('category')).copyWith(
+                        prefixIcon: const Icon(Icons.lock_outline, size: 18),
+                        helperText: "${t('category_locked')} \"$presetCategory\"",
+                      ),
+                    )
+                  else
+                    Autocomplete<String>(
+                      optionsBuilder: (TextEditingValue value) {
+                        if (value.text.isEmpty) return suggestions;
+                        return suggestions.where((cat) => cat.toLowerCase().contains(value.text.toLowerCase()));
+                      },
+                      onSelected: (String selection) => categoryController.text = selection,
+                      fieldViewBuilder: (context, controller, focusNode, onSubmit) {
+                        controller.text = categoryController.text;
+                        controller.addListener(() => categoryController.text = controller.text);
+                        return TextFormField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          // ✅ CORRECTION 7: Utiliser 'lang'
+                          decoration: _inputDecoration(t('category'), hint: lang == 'fr' ? "Ex: Confiance" : "Ex: Trust"),
+                        );
+                      },
+                    ),
                 ],
               ),
             ),
@@ -1109,12 +1168,16 @@ class _VerseLibraryPageState extends State<VerseLibraryPage> {
 
                   // ✅ CORRECTION 9: Convertir le livre en français avant de sauvegarder
                   final bookInFrench = BookTranslations.toFrench(selectedBook!);
-                  await library.addVerse(ref, bookInFrench, categoryController.text.trim());
+                  // 👈 MODIFIÉ : si presetCategory est fourni, on l'utilise directement
+                  // plutôt que le contenu du controller (qui est verrouillé de toute
+                  // façon, mais on préfère être explicite).
+                  final categoryToSave = presetCategory ?? categoryController.text.trim();
+                  await library.addVerse(ref, bookInFrench, categoryToSave);
 
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text("$ref ${t('added_to_library')}${categoryController.text.isNotEmpty ? ' ${t('in_category')} \"${categoryController.text}\"' : ''}."),
+                        content: Text("$ref ${t('added_to_library')}${categoryToSave.isNotEmpty ? ' ${t('in_category')} \"$categoryToSave\"' : ''}."),
                         backgroundColor: Colors.green,
                       ),
                     );

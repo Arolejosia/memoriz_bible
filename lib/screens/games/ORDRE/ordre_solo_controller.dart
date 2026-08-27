@@ -9,9 +9,8 @@ class OrdreSoloController extends OrdreGameControllerBase {
   final Verse verse;
   final bool isSandbox;
   final Function(bool didWin)? onGameConcluded;
-  final String language; // ✅ AJOUTÉ
+  final String language;
 
-  // === ÉTAT PRIVÉ ===
   bool _isLoading = true;
   String _questionText = "";
   List<String> _wordBank = [];
@@ -21,7 +20,6 @@ class OrdreSoloController extends OrdreGameControllerBase {
   bool _isAnswered = false;
   List<bool> _wordStates = [];
 
-  // Données de jeu
   UnscrambleGameData? _currentGameData;
   int _currentVerseIndex = 0;
   late GameSession session;
@@ -30,7 +28,7 @@ class OrdreSoloController extends OrdreGameControllerBase {
     required this.verse,
     this.isSandbox = false,
     this.onGameConcluded,
-    this.language = 'fr', // ✅ AJOUTÉ avec valeur par défaut
+    this.language = 'fr',
   }) {
     session = GameSession(
       isSandbox: isSandbox,
@@ -40,7 +38,6 @@ class OrdreSoloController extends OrdreGameControllerBase {
     _loadGame();
   }
 
-  // === GETTERS SURCHARGÉS ===
   @override
   bool get isLoading => _isLoading;
 
@@ -78,14 +75,12 @@ class OrdreSoloController extends OrdreGameControllerBase {
   @override
   List<bool> get wordStates => _wordStates;
 
-  // === GETTERS SPÉCIFIQUES AU SOLO ===
   @override
   String? get currentReference => _currentReference;
 
   @override
   bool get canShowNextButton => _isAnswered;
 
-  // === MÉTHODES PRIVÉES ===
   int _getVerseCount() {
     final ref = verse.reference;
     if (ref.contains('-')) {
@@ -100,31 +95,29 @@ class OrdreSoloController extends OrdreGameControllerBase {
     notifyListeners();
 
     try {
-      // Détecter la langue depuis la référence
       final detectedLanguage = detectLanguageFromReference(verse.reference);
       print('🎮 Chargement du jeu Ordre - Référence: ${verse.reference}, Langue: $detectedLanguage');
 
       final gameData = await BibleService().generateRemettreEnOrdrePassage(
         reference: verse.reference,
-        language: detectedLanguage, // ✅ Utilise la langue détectée
+        language: detectedLanguage,
       );
 
       print('✅ Données reçues - Type: ${gameData.runtimeType}');
       print('✅ Nombre de versets: ${gameData.versets.length}');
 
-      // Vérification de la structure
       if (gameData.versets.isNotEmpty) {
         _currentGameData = gameData;
         _setupVerse(gameData.versets[0]);
         print('✅ Premier verset configuré: $_currentReference');
       } else {
         print('❌ Aucun verset dans les données');
-        _questionText = "no_verses_found"; // ✅ Clé de traduction
+        _questionText = "no_verses_found";
       }
     } catch (e, stackTrace) {
       print('❌ Erreur lors du chargement du jeu: $e');
       print('📋 Stack trace: $stackTrace');
-      _questionText = "loading_error"; // ✅ Clé de traduction
+      _questionText = "loading_error";
     }
 
     _isLoading = false;
@@ -134,10 +127,16 @@ class OrdreSoloController extends OrdreGameControllerBase {
   void _setupVerse(MotsMelesData verseData) {
     _isAnswered = false;
     _wordBank = List.from(verseData.motsMelanges);
-    _placedWords = List.filled(verseData.motsCorrects.length, null);
+    // 👈 AVANT : List.filled(verseData.motsCorrects.length, null)
+    //    → liste à taille FIXE, insert()/removeLast() lèvent une exception.
+    _placedWords = List<String?>.filled(
+      verseData.motsCorrects.length,
+      null,
+      growable: true,
+    );
     _correctOrder = verseData.motsCorrects;
     _currentReference = verseData.reference;
-    _questionText = "put_words_in_order"; // ✅ Clé de traduction
+    _questionText = "put_words_in_order";
     _wordStates = [];
 
     print('✅ Verset configuré:');
@@ -149,32 +148,73 @@ class OrdreSoloController extends OrdreGameControllerBase {
   }
 
   // === ACTIONS PUBLIQUES ===
+
+  // 👈 RÉÉCRIT : avant, déposer un mot sur un slot occupé faisait un simple
+  // échange (swap) des deux mots — impossible d'insérer "entre" deux mots
+  // déjà placés sans tout réorganiser manuellement.
+  //
+  // Maintenant : _placedWords maintient un invariant strict — tous les mots
+  // placés sont toujours groupés en bloc contigu au début de la liste, tous
+  // les emplacements vides (null) sont toujours à la fin. Grâce à ça,
+  // déposer un mot sur un mot déjà placé l'INSÈRE juste avant lui et décale
+  // tout le reste d'une position vers la droite (comme dans un vrai éditeur
+  // de texte), au lieu de l'échanger.
   @override
   void placeWord(String word, int targetIndex, {int? sourceIndex}) {
     if (_isAnswered) return;
 
-    final existingWordInSlot = _placedWords[targetIndex];
-    _placedWords[targetIndex] = word;
+    // Nombre de mots actuellement placés, calculé AVANT toute modification.
+    final nonNullCount = _placedWords.where((w) => w != null).length;
 
     if (sourceIndex != null) {
-      // Mot déplacé depuis une autre position (échange)
-      _placedWords[sourceIndex] = existingWordInSlot;
+      // Le mot vient d'un autre slot déjà rempli : on le réorganise.
+      // 1. On l'extrait de sa position actuelle (la liste se contracte
+      //    naturellement, aucun trou ne reste au milieu).
+      _placedWords.removeAt(sourceIndex);
+
+      // 2. Si le mot venait d'AVANT la cible, l'extraction a déjà décalé
+      //    tout ce qui suit d'un cran vers la gauche — donc la position
+      //    cible doit être ajustée d'un cran en arrière.
+      int adjustedTarget = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+
+      // 3. On ne peut pas insérer au-delà du nombre de mots réellement
+      //    placés après extraction (nonNullCount - 1, puisqu'on vient
+      //    d'en retirer un).
+      final maxInsertIndex = nonNullCount - 1;
+      adjustedTarget = adjustedTarget.clamp(0, maxInsertIndex);
+
+      // 4. On insère à la nouvelle position — tout ce qui était à partir
+      //    de cette position est automatiquement décalé d'un cran à droite.
+      _placedWords.insert(adjustedTarget, word);
     } else {
-      // Mot venant de la banque
+      // Le mot vient de la banque de mots.
       _wordBank.remove(word);
-      if (existingWordInSlot != null) {
-        _wordBank.add(existingWordInSlot);
-      }
+
+      // On ne peut pas insérer au-delà du bloc de mots déjà placés
+      // (au-delà, ce ne sont que des emplacements vides équivalents).
+      final clampedTarget = targetIndex.clamp(0, nonNullCount);
+
+      _placedWords.insert(clampedTarget, word);
+      // L'insertion a fait grandir la liste d'un élément — on retire le
+      // null excédentaire en fin de liste pour garder une taille fixe.
+      _placedWords.removeLast();
     }
+
     notifyListeners();
   }
 
+  // 👈 CORRIGÉ : avant, remettre un mot dans la banque le mettait à `null`
+  // sur place, créant un TROU au milieu de la liste et cassant l'invariant
+  // "mots placés toujours contigus au début". Maintenant on l'extrait
+  // proprement (la liste se contracte) puis on rajoute un null à la fin.
   @override
   void returnWordToBank(String word, int sourceIndex) {
     if (_isAnswered) return;
 
-    _placedWords[sourceIndex] = null;
+    _placedWords.removeAt(sourceIndex);
+    _placedWords.add(null);
     _wordBank.add(word);
+
     notifyListeners();
   }
 
@@ -186,7 +226,6 @@ class OrdreSoloController extends OrdreGameControllerBase {
     List<bool> newWordStates = [];
     bool isCorrect = true;
 
-    // Vérifier chaque mot individuellement
     for (int i = 0; i < _correctOrder.length; i++) {
       if (i < userAnswer.length && userAnswer[i] == _correctOrder[i]) {
         newWordStates.add(true);
@@ -206,7 +245,6 @@ class OrdreSoloController extends OrdreGameControllerBase {
     session.submitAnswer(isCorrect: isCorrect);
     notifyListeners();
 
-    // Auto-passer à la question suivante si correct
     if (isCorrect && !session.isGameFinished) {
       Timer(const Duration(milliseconds: 1500), _handleNextAction);
     }
@@ -219,7 +257,6 @@ class OrdreSoloController extends OrdreGameControllerBase {
     final isCorrect = userAnswer.join(' ') == _correctOrder.join(' ');
 
     if (!isCorrect) {
-      // Permettre de réessayer
       _isAnswered = false;
       _wordStates = [];
       notifyListeners();
@@ -232,12 +269,10 @@ class OrdreSoloController extends OrdreGameControllerBase {
       return;
     }
 
-    // Passer au verset suivant
     if (_currentGameData != null &&
         _currentVerseIndex < _currentGameData!.versets.length - 1) {
       _currentVerseIndex++;
-      print(
-          '➡️ Passage au verset ${_currentVerseIndex + 1}/${_currentGameData!.versets.length}');
+      print('➡️ Passage au verset ${_currentVerseIndex + 1}/${_currentGameData!.versets.length}');
       _setupVerse(_currentGameData!.versets[_currentVerseIndex]);
     } else {
       print('🏆 Tous les versets complétés!');

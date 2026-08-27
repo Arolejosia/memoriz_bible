@@ -7,6 +7,7 @@ import '../Bibliotheque.dart';
 import '../screens/auth/authentification.dart';
 import '../screens/auth/profile_page.dart';
 import '../screens/core/about_page.dart';
+import '../screens/core/bible_reader_page.dart';
 import '../screens/core/home_page.dart';
 import '../screens/core/settings_page.dart';
 import '../screens/duels/multiplayer_hub_page.dart';
@@ -66,6 +67,18 @@ class _MainDrawerState extends State<MainDrawer> {
           ),
 
           const Divider(),
+
+          ListTile(
+            leading: Icon(Icons.menu_book, color: Colors.brown.shade400),
+            title: Text(t('bible')), // <--- TRADUIT
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const BibleReaderPage()),
+              );
+            },
+          ),
 
           ListTile(
             leading: const Icon(Icons.book),
@@ -208,6 +221,7 @@ class DrawerTranslations {
     final Map<String, Map<String, String>> translations = {
       'title': {'fr': 'MemorizBible', 'en': 'MemorizBible'},
       'home': {'fr': 'Accueil', 'en': 'Home'},
+      'bible': {'fr': 'Bible', 'en': 'Bible'},
       'library': {'fr': 'Bibliothèque', 'en': 'Library'},
       'profile': {'fr': 'Profil & Progrès', 'en': 'Profile & Progress'},
       'my_groups': {'fr': 'Mes Groupes', 'en': 'My Groups'},

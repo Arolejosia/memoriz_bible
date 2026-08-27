@@ -11,6 +11,8 @@ import '../../Bibliotheque.dart';
 import '../../models/language_provider.dart';
 import '../../prayer/providers/prayer_notes_provider.dart';
 import '../../prayer/models/prayer_note.dart';
+// ⚠️ Chemin à confirmer selon la structure réelle (features/prayer vs prayer)
+import '../../prayer/widgets/note_editor_widget.dart';
 // bible_reader_page.dart est placé dans lib/screens/core/, comme pageDeConfiguration.dart
 import 'pageDeConfiguration.dart';
 // ⚠️ Chemins à confirmer : modèle Verse et écran de détail/progression réelle
@@ -347,6 +349,180 @@ class _BibleReaderPageState extends State<BibleReaderPage> {
   }
 
   // ===================================================
+  // Notes existantes sur les versets affichés
+  // ===================================================
+
+  /// Découpe une référence enregistrée par NoteEditorWidget /
+  /// _prendreNoteSurVerset, au format "Livre Chapitre:Début[-Fin]".
+  /// Retourne null si le format ne correspond pas.
+  ({String livreChapitre, int debut, int fin})? _parseReferenceNote(
+      String reference,
+      ) {
+    final match =
+    RegExp(r'^(.+\s+\d+):(\d+)(?:-(\d+))?$').firstMatch(reference.trim());
+    if (match == null) return null;
+
+    final livreChapitre = match.group(1)!;
+    final debut = int.tryParse(match.group(2)!);
+    if (debut == null) return null;
+
+    final fin =
+    match.group(3) != null ? (int.tryParse(match.group(3)!) ?? debut) : debut;
+
+    return (livreChapitre: livreChapitre, debut: debut, fin: fin);
+  }
+
+  /// Retourne les notes qui couvrent ce verset précis, en comparant
+  /// "Livre Chapitre" + numéro de verset à la plage stockée dans
+  /// note.verseReference.
+  List<PrayerNote> _notesPourVerset(
+      VerseData verset,
+      List<PrayerNote> toutesLesNotes,
+      ) {
+    final derniereSep = verset.reference.lastIndexOf(':');
+    if (derniereSep == -1) return [];
+
+    final livreChapitreVerset = verset.reference.substring(0, derniereSep);
+    final numeroVerset =
+    int.tryParse(verset.reference.substring(derniereSep + 1));
+    if (numeroVerset == null) return [];
+
+    return toutesLesNotes.where((note) {
+      final reference = note.verseReference;
+      if (reference == null || reference.isEmpty) return false;
+
+      final parsed = _parseReferenceNote(reference);
+      if (parsed == null) return false;
+
+      return parsed.livreChapitre == livreChapitreVerset &&
+          numeroVerset >= parsed.debut &&
+          numeroVerset <= parsed.fin;
+    }).toList();
+  }
+
+  /// Bottom sheet affichant la/les note(s) existantes pour un verset,
+  /// avec un accès direct à l'édition via NoteEditorWidget.
+  void _afficherNotesVerset(List<PrayerNote> notes) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (bottomSheetContext) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.45,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    notes.length == 1
+                        ? (_language == 'fr' ? 'Ma note' : 'My note')
+                        : (_language == 'fr'
+                        ? '${notes.length} notes'
+                        : '${notes.length} notes'),
+                    style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      itemCount: notes.length,
+                      separatorBuilder: (_, __) => const Divider(height: 24),
+                      itemBuilder: (context, index) {
+                        final note = notes[index];
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    note.verseReference ?? '',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.brown.shade600,
+                                    ),
+                                  ),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () {
+                                    Navigator.pop(bottomSheetContext);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => NoteEditorWidget(
+                                          note: note,
+                                          language: _language,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.edit, size: 16),
+                                  label: Text(
+                                    _language == 'fr' ? 'Modifier' : 'Edit',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              note.content,
+                              style: const TextStyle(fontSize: 15, height: 1.4),
+                            ),
+                            if (note.tags.isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              Wrap(
+                                spacing: 6,
+                                children: note.tags
+                                    .map(
+                                      (tag) => Chip(
+                                    label: Text(
+                                      tag,
+                                      style: const TextStyle(fontSize: 11),
+                                    ),
+                                    visualDensity: VisualDensity.compact,
+                                    materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                )
+                                    .toList(),
+                              ),
+                            ],
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ===================================================
   // ÉTAPE 3 : Lecture du chapitre (liste des versets)
   // ===================================================
   Widget _buildLectureChapitre() {
@@ -369,6 +545,11 @@ class _BibleReaderPageState extends State<BibleReaderPage> {
       );
     }
 
+    // Récupéré une seule fois par build : toutes les notes de l'utilisateur.
+    // Le filtrage précis par verset se fait ensuite dans _notesPourVerset().
+    final notesProvider = Provider.of<PrayerNotesProvider>(context, listen: true);
+    final toutesLesNotes = notesProvider.notes;
+
     return Stack(
       children: [
         ListView.builder(
@@ -383,42 +564,87 @@ class _BibleReaderPageState extends State<BibleReaderPage> {
             final verset = _versets[index];
             final numeroVerset = verset.reference.split(':').last;
             final selectionne = _estSelectionne(index);
+            final notesDuVerset = _notesPourVerset(verset, toutesLesNotes);
+            final aDesNotes = notesDuVerset.isNotEmpty;
 
-            return InkWell(
-              onTap: () => _onTapVerset(index),
-              borderRadius: BorderRadius.circular(8),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                margin: const EdgeInsets.only(bottom: 4),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  color: selectionne
-                      ? Colors.brown.withValues(alpha: 0.15)
-                      : Colors.transparent,
+            return Stack(
+              children: [
+                InkWell(
+                  onTap: () => _onTapVerset(index),
                   borderRadius: BorderRadius.circular(8),
-                ),
-                child: RichText(
-                  text: TextSpan(
-                    style: DefaultTextStyle.of(context).style.copyWith(
-                      fontSize: 17,
-                      height: 1.5,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    margin: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: selectionne
+                          ? Colors.brown.withValues(alpha: 0.15)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    children: [
-                      TextSpan(
-                        text: '$numeroVerset  ',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: selectionne
-                              ? Colors.brown.shade700
-                              : Colors.grey,
+                    child: RichText(
+                      text: TextSpan(
+                        style: DefaultTextStyle.of(context).style.copyWith(
+                          fontSize: 17,
+                          height: 1.5,
                         ),
+                        children: [
+                          TextSpan(
+                            // Espace supplémentaire à droite pour laisser
+                            // la place à l'icône de note sans la chevaucher.
+                            text: aDesNotes ? '$numeroVerset    ' : '$numeroVerset  ',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: selectionne
+                                  ? Colors.brown.shade700
+                                  : Colors.grey,
+                            ),
+                          ),
+                          TextSpan(
+                            text: verset.text,
+                            style: aDesNotes
+                                ? TextStyle(
+                              decoration: TextDecoration.underline,
+                              decorationColor: Colors.brown.shade300,
+                              decorationStyle: TextDecorationStyle.dotted,
+                              decorationThickness: 1.5,
+                            )
+                                : null,
+                          ),
+                        ],
                       ),
-                      TextSpan(text: verset.text),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+
+                // Icône de note : widget séparé posé PAR-DESSUS l'InkWell
+                // de sélection (pas imbriqué dedans). Le hit-test du Stack
+                // donne la priorité à ce widget dans sa petite zone, donc
+                // il capte son propre tap sans jamais déclencher la
+                // sélection de verset en dessous.
+                if (aDesNotes)
+                  Positioned(
+                    right: 4,
+                    top: 6,
+                    child: GestureDetector(
+                      onTap: () => _afficherNotesVerset(notesDuVerset),
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.brown.shade50,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.edit_note,
+                          size: 16,
+                          color: Colors.brown.shade400,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             );
           },
         ),

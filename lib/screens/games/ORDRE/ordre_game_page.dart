@@ -580,7 +580,9 @@ class _ScoreDisplay extends StatelessWidget {
 }
 
 // ==============================================================================
-// GAME CONTENT — Layout 2 colonnes (Word Bank à gauche, Réponse à droite)
+// GAME CONTENT — 👈 RESTRUCTURÉ : une seule colonne verticale, un seul
+// scroll pour toute la page, au lieu de deux colonnes côte à côte avec
+// chacune son propre scroll étroit et peu naturel.
 // ==============================================================================
 class _GameContent extends StatelessWidget {
   final OrdreGameControllerBase controller;
@@ -591,23 +593,20 @@ class _GameContent extends StatelessWidget {
     required this.onSubmitAnswer,
   });
 
-  String t(BuildContext context, String key) {
-    final lang = context.read<LanguageProvider>().language;
-    return OrdreTranslations.t(key, lang);
-  }
-
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isSmallScreen = constraints.maxHeight < 600;
+        final horizontalPadding = isSmallScreen ? 12.0 : 20.0;
 
-        return Padding(
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
+            horizontalPadding,
             isSmallScreen ? 12.0 : 20.0,
-            isSmallScreen ? 12.0 : 20.0,
-            isSmallScreen ? 12.0 : 20.0,
-            90, // espace réservé pour le bouton flottant en bas
+            horizontalPadding,
+            100, // espace réservé pour le bouton flottant en bas
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -617,24 +616,12 @@ class _GameContent extends StatelessWidget {
                   controller.status == 'answered')
                 _RoundFeedback(
                     controller: controller as OrdreMultiplayerController),
-              const SizedBox(height: 16),
-              // === Layout 2 colonnes côte à côte ===
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Colonne gauche : Word Bank
-                    Expanded(
-                      child: _WordBankColumn(controller: controller),
-                    ),
-                    const SizedBox(width: 12),
-                    // Colonne droite : Zone de réponse
-                    Expanded(
-                      child: _AnswerColumn(controller: controller),
-                    ),
-                  ],
-                ),
-              ),
+              const SizedBox(height: 20),
+              // === Banque de mots (en haut, en Wrap) ===
+              _WordBankSection(controller: controller),
+              const SizedBox(height: 20),
+              // === Zone de réponse (en dessous, en Wrap) ===
+              _AnswerSection(controller: controller),
             ],
           ),
         );
@@ -644,12 +631,14 @@ class _GameContent extends StatelessWidget {
 }
 
 // ==============================================================================
-// WORD BANK COLUMN (gauche)
+// WORD BANK SECTION — 👈 RENOMMÉ depuis _WordBankColumn.
+// Affiche les mots en Wrap (ils reviennent à la ligne naturellement) au
+// lieu d'une colonne verticale scrollable indépendante.
 // ==============================================================================
-class _WordBankColumn extends StatelessWidget {
+class _WordBankSection extends StatelessWidget {
   final OrdreGameControllerBase controller;
 
-  const _WordBankColumn({required this.controller});
+  const _WordBankSection({required this.controller});
 
   String t(BuildContext context, String key) {
     final lang = context.read<LanguageProvider>().language;
@@ -680,12 +669,12 @@ class _WordBankColumn extends StatelessWidget {
           );
         },
         builder: (context, candidateData, rejectedData) {
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+          return Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
                     Icon(
                       Icons.library_books_rounded,
@@ -693,40 +682,30 @@ class _WordBankColumn extends StatelessWidget {
                       size: 16,
                     ),
                     const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        t(context, 'word_bank'),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade700,
-                          fontSize: 13,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                    Text(
+                      t(context, 'word_bank'),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                        fontSize: 13,
                       ),
                     ),
                   ],
                 ),
-              ),
-              const Divider(height: 1),
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    children: controller.wordBank
-                        .map((word) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _DraggableWord(
-                        controller: controller,
-                        word: word,
-                        fromIndex: null,
-                      ),
-                    ))
-                        .toList(),
-                  ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: controller.wordBank
+                      .map((word) => _DraggableWord(
+                    controller: controller,
+                    word: word,
+                    fromIndex: null,
+                  ))
+                      .toList(),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),
@@ -908,18 +887,20 @@ class _RoundFeedback extends StatelessWidget {
 }
 
 // ==============================================================================
-// ANSWER COLUMN (droite)
+// ANSWER SECTION — 👈 RENOMMÉ depuis _AnswerColumn.
+// Affiche les slots en Wrap au lieu d'une colonne scrollable indépendante ;
+// s'insère maintenant dans le scroll unique de la page.
 // ==============================================================================
-class _AnswerColumn extends StatefulWidget {
+class _AnswerSection extends StatefulWidget {
   final OrdreGameControllerBase controller;
 
-  const _AnswerColumn({required this.controller});
+  const _AnswerSection({required this.controller});
 
   @override
-  State<_AnswerColumn> createState() => _AnswerColumnState();
+  State<_AnswerSection> createState() => _AnswerSectionState();
 }
 
-class _AnswerColumnState extends State<_AnswerColumn>
+class _AnswerSectionState extends State<_AnswerSection>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -983,50 +964,45 @@ class _AnswerColumnState extends State<_AnswerColumn>
                 width: 2,
               ),
             ),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
                       Icon(Icons.reorder_rounded,
                           color: Colors.grey.shade700, size: 16),
                       const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          // ⚠️ Si la clé 'your_answer' n'existe pas encore dans
-                          // ordre_translations.dart, ajoute-la (FR: "Ta réponse",
-                          // EN: "Your answer"). En attendant, fallback visuel simple.
-                          t(context, 'your_answer'),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade700,
-                            fontSize: 13,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                      Text(
+                        // ⚠️ Si la clé 'your_answer' n'existe pas encore dans
+                        // ordre_translations.dart, ajoute-la (FR: "Ta réponse",
+                        // EN: "Your answer").
+                        t(context, 'your_answer'),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
+                          fontSize: 13,
                         ),
                       ),
                     ],
                   ),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.all(10),
-                    child: Column(
-                      children: List.generate(
-                        widget.controller.placedWords.length,
-                            (index) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: _DropTarget(
-                              controller: widget.controller, index: index),
-                        ),
-                      ),
+                  const SizedBox(height: 12),
+                  // 👈 Wrap au lieu d'une Column dans un SingleChildScrollView
+                  // séparé. Dépose ton mot SUR un mot déjà placé pour l'insérer
+                  // juste avant lui — tout le reste se décale automatiquement
+                  // (voir placeWord() dans OrdreSoloController).
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: List.generate(
+                      widget.controller.placedWords.length,
+                          (index) => _DropTarget(
+                          controller: widget.controller, index: index),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -1093,7 +1069,10 @@ class _DropTargetState extends State<_DropTarget>
               scale: _bounceAnimation.value,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                width: double.infinity,
+                // 👈 RETIRÉ : width: double.infinity — dans un Wrap, chaque
+                // slot doit avoir une taille compacte, pas s'étirer sur
+                // toute la largeur disponible.
+                constraints: const BoxConstraints(minWidth: 56),
                 padding:
                 const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 decoration: BoxDecoration(
@@ -1218,7 +1197,8 @@ class _DraggableWordState extends State<_DraggableWord>
             childWhenDragging: Opacity(
               opacity: 0.3,
               child: _buildWordChip(Colors.grey.shade300,
-                  Colors.grey.shade500, Colors.grey.shade400, false),
+                  Colors.grey.shade500, Colors.grey.shade400, false,
+                  constrainWidth: false),
             ),
             onDragStarted: () {
               _scaleController.forward();
@@ -1227,8 +1207,11 @@ class _DraggableWordState extends State<_DraggableWord>
             onDragEnd: (details) {
               _scaleController.reverse();
             },
+            // 👈 constrainWidth: false — dans un Wrap, chaque mot doit
+            // s'afficher à sa taille naturelle, pas en pleine largeur.
             child: _buildWordChip(
-                backgroundColor, fontColor, borderColor, false),
+                backgroundColor, fontColor, borderColor, false,
+                constrainWidth: false),
           ),
         );
       },

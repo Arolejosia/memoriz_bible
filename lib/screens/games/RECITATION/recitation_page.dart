@@ -362,6 +362,14 @@ class _RecitationGameViewState extends State<RecitationGameView>
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
 
+  // 👈 AJOUT : contrôleur persistant pour le champ "entrer la référence".
+  // Créé une seule fois (lazy, dans _buildReferenceVerificationStep) plutôt
+  // qu'à chaque reconstruction du widget — avant, un nouveau
+  // TextEditingController était recréé à CHAQUE frappe (via le Consumer qui
+  // rebuild sur chaque notifyListeners()), ce qui faisait sauter le curseur
+  // et perturbait le clavier.
+  TextEditingController? _referenceInputController;
+
   @override
   void initState() {
     super.initState();
@@ -388,6 +396,7 @@ class _RecitationGameViewState extends State<RecitationGameView>
   void dispose() {
     _fadeController.dispose();
     _shakeController.dispose();
+    _referenceInputController?.dispose(); // 👈 AJOUT
     super.dispose();
   }
 
@@ -721,8 +730,20 @@ class _RecitationGameViewState extends State<RecitationGameView>
       ),
     );
   }
+
   Widget _buildReferenceVerificationStep(RecitationSoloController controller) {
-    final TextEditingController textController = TextEditingController(text: controller.referenceInput);
+    // 👈 CORRIGÉ : avant, un nouveau TextEditingController était créé ICI à
+    // chaque appel de cette méthode — et cette méthode est rappelée à
+    // chaque frappe via le Consumer<RecitationController> qui rebuild sur
+    // notifyListeners(). Résultat : le champ de texte était détruit et
+    // recréé à chaque lettre tapée, faisant sauter le curseur et perturbant
+    // le clavier.
+    //
+    // Maintenant : le contrôleur est créé UNE SEULE FOIS (stocké dans l'état
+    // du widget, voir _referenceInputController plus haut) et simplement
+    // réutilisé sur tous les rebuilds suivants.
+    _referenceInputController ??= TextEditingController(text: controller.referenceInput);
+    final textController = _referenceInputController!;
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -1739,4 +1760,4 @@ class _RecitationGameViewState extends State<RecitationGameView>
 
     );
   }
-  }
+}
