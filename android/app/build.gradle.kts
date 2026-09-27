@@ -15,7 +15,7 @@ plugins {
 android {
 
     namespace = "com.example.memoriz_bible"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36 // ✅ MODIFIÉ : API 36 (Android 16) exigée par Google Play
     ndkVersion = "28.2.13676358"
 
     val keystorePropertiesFile = rootProject.file("key.properties")
@@ -41,9 +41,9 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = 35
-        versionCode = 16
-        versionName = "1.0.11"
+        targetSdk = 36          // ✅ MODIFIÉ : 35 → 36
+        versionCode = 17        // ✅ MODIFIÉ : 16 → 17 (le 16 a déjà été envoyé)
+        versionName = "1.1.0"   // ✅ MODIFIÉ : nouvelle version (méditation + partage)
     }
 
     signingConfigs {
