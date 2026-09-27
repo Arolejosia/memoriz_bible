@@ -2,8 +2,11 @@ workflows:
   # ============================================
   # WORKFLOW iOS PRODUCTION
   # ============================================
+  # La version (CFBundleShortVersionString) vient de pubspec.yaml
+  # -> à chaque release, monter "version: X.Y.Z+N" dans pubspec.yaml
+  # Le build number est géré automatiquement par Codemagic ($BUILD_NUMBER)
   ios-production:
-    name: iOS Production Build & TestFlight
+    name: iOS Production Build & App Store
     max_build_duration: 120
     instance_type: mac_mini_m2
 
@@ -19,7 +22,6 @@ workflows:
         XCODE_WORKSPACE: "Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
         APPLE_TEAM_ID: "W6M3PAXV6L"
-        APP_VERSION: "1.0.12"
 
       flutter: stable
       xcode: latest
@@ -39,6 +41,11 @@ workflows:
       - name: "📦 Get Flutter dependencies"
         script: |
           flutter pub get
+
+      - name: "🔎 Afficher la version du pubspec"
+        script: |
+          echo "Version pubspec : $(grep '^version:' pubspec.yaml)"
+          echo "Build number Codemagic : $BUILD_NUMBER"
 
       - name: "📱 Create iOS Export Options"
         script: |
@@ -74,7 +81,6 @@ workflows:
       - name: "🍏 Build iOS IPA"
         script: |
           flutter build ipa --release \
-            --build-name=$APP_VERSION \
             --build-number=$BUILD_NUMBER \
             --export-options-plist=/Users/builder/export_options.plist
 
@@ -90,17 +96,18 @@ workflows:
           success: true
           failure: true
 
-      # ✅ Upload automatique sur TestFlight
+      # ✅ Upload + soumission automatique pour review App Store
       app_store_connect:
         auth: integration
         submit_to_testflight: false
         submit_to_app_store: true
 
   # ============================================
-  # WORKFLOW iOS BETA (optionnel)
+  # WORKFLOW iOS BETA (TestFlight)
   # ============================================
+  # Même logique : version depuis pubspec.yaml, build number auto
   ios-beta:
-    name: iOS Beta Build
+    name: iOS Beta Build (TestFlight)
     max_build_duration: 120
     instance_type: mac_mini_m2
 
@@ -116,7 +123,6 @@ workflows:
         XCODE_WORKSPACE: "Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
         APPLE_TEAM_ID: "W6M3PAXV6L"
-        APP_VERSION: "1.0.0-beta"
 
       flutter: stable
       xcode: latest
@@ -132,6 +138,11 @@ workflows:
       - name: "📦 Get Flutter dependencies"
         script: |
           flutter pub get
+
+      - name: "🔎 Afficher la version du pubspec"
+        script: |
+          echo "Version pubspec : $(grep '^version:' pubspec.yaml)"
+          echo "Build number Codemagic : $BUILD_NUMBER"
 
       - name: "📱 Create iOS Export Options"
         script: |
@@ -167,8 +178,7 @@ workflows:
       - name: "🍏 Build iOS IPA"
         script: |
           flutter build ipa --release \
-            --build-name=$APP_VERSION \
-            --build-number=22 \
+            --build-number=$BUILD_NUMBER \
             --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
