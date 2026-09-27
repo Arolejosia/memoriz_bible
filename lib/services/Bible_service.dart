@@ -1,5 +1,6 @@
 // Fichier: services/bible_service.dart
 // ✅ VERSION CORRIGÉE - Support multilingue complet
+// ✅ CORRIGÉ : getLivres() renvoie une copie (évite les doublons dans le dropdown)
 
 import 'dart:convert';
 import 'dart:async';
@@ -300,10 +301,15 @@ class BibleService {
     return _getFallbackVerses(reference, language);
   }
 
+  /// Récupère la liste des livres de la Bible
+  /// ✅ CORRIGÉ : renvoie toujours une COPIE de la liste.
+  /// Avant, le cache interne était renvoyé directement : si un écran
+  /// ajoutait des éléments à cette liste, les livres apparaissaient en double
+  /// (ce qui faisait planter les DropdownButton).
   Future<List<BibleBookInfo>> getLivres({String language = 'fr'}) async {
     if (_livresCacheLanguage == language && _livresCache.isNotEmpty) {
       print("✅ Cache hit pour la liste des livres ($language)");
-      return _livresCache;
+      return List.of(_livresCache);
     }
 
     final url = Uri.parse('$_baseUrl/livres');
@@ -324,7 +330,7 @@ class BibleService {
         _livresCacheLanguage = language;
 
         print("✅ ${livres.length} livres chargés ($language)");
-        return livres;
+        return List.of(livres);
       } else {
         print("❌ Erreur HTTP ${response.statusCode} sur /livres");
         return [];
@@ -786,4 +792,3 @@ class BibleService {
     }
   }
 }
-

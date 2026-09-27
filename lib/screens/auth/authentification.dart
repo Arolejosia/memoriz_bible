@@ -7,7 +7,8 @@ import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:provider/provider.dart';
 import '../../models/language_provider.dart';
 import '../core/home_page.dart';
-
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 /// Translations for authentication page
 /// Traductions pour la page d'authentification
@@ -107,7 +108,8 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 
-  Future<void> _authenticate() async {
+  Future<void> _authenticate() async
+  {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
@@ -216,7 +218,7 @@ class _AuthPageState extends State<AuthPage> {
                 (route) => false,
           );
         }
-      }else {
+      } else {
         // --- SIGNUP / INSCRIPTION ---
         if (_fullNameController.text.isEmpty ||
             _emailController.text.isEmpty ||
@@ -224,29 +226,54 @@ class _AuthPageState extends State<AuthPage> {
           throw FormatException(t('fill_all_fields'));
         }
 
+        // ✅ Capture tout ce dont on a besoin AVANT l'appel Firebase qui
+        // déclenche authStateChanges() et peut faire unmount ce widget
+        // (AuthGate remplace AuthPage par VerifyEmailPage dès la création
+        // du compte, avant même la fin de cette méthode).
+        final lang = context.read<LanguageProvider>().language;
+        final fullName = _fullNameController.text.trim();
+        final emailText = _emailController.text.trim();
+        final passwordText = _passwordController.text.trim();
+        final phoneText = _fullPhoneNumber;
+        final birthDateValue = _birthDate;
+
         UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
+          email: emailText,
+          password: passwordText,
         );
 
         final user = userCredential.user;
         if (user != null) {
           // Enregistrer les données dans Firestore
           await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-            'fullName': _fullNameController.text.trim(),
-            'phone': _fullPhoneNumber.isEmpty ? null : _fullPhoneNumber,
-            'birthDate': _birthDate,
-            'email': _emailController.text.trim(),
+            'fullName': fullName,
+            'phone': phoneText.isEmpty ? null : phoneText,
+            'birthDate': birthDateValue,
+            'email': emailText,
             'createdAt': FieldValue.serverTimestamp(),
           });
 
-          // Essayer d'envoyer l'email de vérification
+          // Essayer d'envoyer l'email de vérification via notre API (Zoho)
           bool emailSent = false;
           String emailError = '';
 
           try {
-            await user.sendEmailVerification();
-            emailSent = true;
+            final response = await http.post(
+              Uri.parse('https://memoriz-bible-api.onrender.com/api/send-verification-email'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'email': user.email,
+                'display_name': fullName,
+                'lang': lang,
+              }),
+            );
+
+            if (response.statusCode == 200) {
+              emailSent = true;
+            } else {
+              emailError = 'Server error: ${response.statusCode} ${response.body}';
+              print('❌ Erreur envoi email: $emailError');
+            }
           } catch (e) {
             emailError = e.toString();
             print('❌ Erreur envoi email: $e');
@@ -278,7 +305,7 @@ class _AuthPageState extends State<AuthPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _emailController.text.trim(),
+                        emailText,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
@@ -404,8 +431,11 @@ class _AuthPageState extends State<AuthPage> {
     } on FirebaseAuthException catch (e) {
       String message;
       switch (e.code) {
-        case 'user-not-found': message = t('user_not_found'); break;
-        case 'wrong-password': message = t('wrong_password'); break;
+        case 'user-not-found':
+        case 'wrong-password':
+        case 'invalid-credential':
+          message = t('invalid_credentials');
+          break;
         case 'weak-password': message = t('weak_password'); break;
         case 'email-already-in-use': message = t('email_in_use'); break;
         case 'invalid-email': message = t('invalid_email'); break;

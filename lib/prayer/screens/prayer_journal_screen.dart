@@ -1,12 +1,19 @@
 // lib/features/prayer/screens/prayer_journal_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../prayer_translations.dart';
 import '../providers/prayer_notes_provider.dart';
 import '../models/prayer_note.dart';
 import '../widgets/note_editor_widget.dart';
+import 'note_read_screen.dart';
+import 'guided_meditation_screen.dart' show appLang;
+
 
 class PrayerJournalScreen extends StatefulWidget {
-  const PrayerJournalScreen({Key? key}) : super(key: key);
+  /// ✅ NOUVEAU : filtre appliqué à l'ouverture (ex. "Tout voir" des méditations)
+  final NoteType? initialFilter;
+
+  const PrayerJournalScreen({Key? key, this.initialFilter}) : super(key: key);
 
   @override
   State<PrayerJournalScreen> createState() => _PrayerJournalScreenState();
@@ -18,6 +25,12 @@ class _PrayerJournalScreenState extends State<PrayerJournalScreen> {
   String _searchQuery = '';
 
   @override
+  void initState() {
+    super.initState();
+    _filterType = widget.initialFilter;
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -25,9 +38,10 @@ class _PrayerJournalScreenState extends State<PrayerJournalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = PrayerTranslations.of(appLang(context));
     return Scaffold(
       appBar: AppBar(
-        title: const Text('📖 Journal de Prière'),
+        title: Text('📖 ${t.prayerJournal}'),
         actions: [
           // Bouton de recherche
           IconButton(
@@ -70,7 +84,7 @@ class _PrayerJournalScreenState extends State<PrayerJournalScreen> {
                         const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: () => notesProvider.loadNotes(),
-                          child: const Text('Réessayer'),
+                          child: Text(t.retry),
                         ),
                       ],
                     ),
@@ -78,12 +92,13 @@ class _PrayerJournalScreenState extends State<PrayerJournalScreen> {
                 }
 
                 // Filtrer les notes
-                var notes = notesProvider.notes;
+                // ✅ CORRIGÉ : la recherche s'applique d'abord,
+                // puis le filtre par type (avant, la recherche écrasait le filtre)
+                var notes = _searchQuery.isNotEmpty
+                    ? notesProvider.searchNotes(_searchQuery)
+                    : notesProvider.notes;
                 if (_filterType != null) {
                   notes = notes.where((n) => n.type == _filterType).toList();
-                }
-                if (_searchQuery.isNotEmpty) {
-                  notes = notesProvider.searchNotes(_searchQuery);
                 }
 
                 if (notes.isEmpty) {
@@ -98,9 +113,7 @@ class _PrayerJournalScreenState extends State<PrayerJournalScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          _searchQuery.isNotEmpty
-                              ? 'Aucune note trouvée'
-                              : 'Aucune note pour le moment',
+                          _searchQuery.isNotEmpty ? t.noNotesFound : t.noNotes,
                           style: TextStyle(
                             fontSize: 18,
                             color: Colors.grey[600],
@@ -108,7 +121,7 @@ class _PrayerJournalScreenState extends State<PrayerJournalScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Appuyez sur + pour créer votre première note',
+                          t.createFirstNote,
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[500],
@@ -128,7 +141,7 @@ class _PrayerJournalScreenState extends State<PrayerJournalScreen> {
                       final note = notes[index];
                       return _NoteCard(
                         note: note,
-                        onTap: () => _editNote(note),
+                        onTap: () => _openNote(note),
                       );
                     },
                   ),
@@ -146,16 +159,17 @@ class _PrayerJournalScreenState extends State<PrayerJournalScreen> {
   }
 
   void _showSearchDialog() {
+    final t = PrayerTranslations.of(appLang(context));
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('🔍 Rechercher'),
+        title: Text('🔍 ${t.search}'),
         content: TextField(
           controller: _searchController,
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Rechercher dans vos notes...',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: t.searchInNotes,
+            border: const OutlineInputBorder(),
           ),
           onSubmitted: (value) {
             setState(() {
@@ -173,7 +187,7 @@ class _PrayerJournalScreenState extends State<PrayerJournalScreen> {
               });
               Navigator.pop(context);
             },
-            child: const Text('Effacer'),
+            child: Text(t.clear),
           ),
           ElevatedButton(
             onPressed: () {
@@ -182,7 +196,7 @@ class _PrayerJournalScreenState extends State<PrayerJournalScreen> {
               });
               Navigator.pop(context);
             },
-            child: const Text('Rechercher'),
+            child: Text(t.search),
           ),
         ],
       ),
@@ -198,11 +212,12 @@ class _PrayerJournalScreenState extends State<PrayerJournalScreen> {
     );
   }
 
-  void _editNote(PrayerNote note) {
+  // ✅ MODIFIÉ : le tap ouvre la vue de lecture (le bouton Modifier y est)
+  void _openNote(PrayerNote note) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => NoteEditorWidget(note: note),
+        builder: (context) => NoteReadScreen(noteId: note.id),
       ),
     );
   }
@@ -220,6 +235,7 @@ class _TypeFilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = PrayerTranslations.of(appLang(context));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: SingleChildScrollView(
@@ -228,7 +244,7 @@ class _TypeFilterChips extends StatelessWidget {
           children: [
             // Tout
             FilterChip(
-              label: const Text('Tout'),
+              label: Text(t.all),
               selected: selectedType == null,
               onSelected: (selected) {
                 onTypeSelected(null);
@@ -239,7 +255,7 @@ class _TypeFilterChips extends StatelessWidget {
             ...NoteType.values.map((type) => Padding(
               padding: const EdgeInsets.only(right: 8),
               child: FilterChip(
-                label: Text(type.displayNameFr),
+                label: Text(t.locale == 'en' ? type.displayNameEn : type.displayNameFr),
                 selected: selectedType == type,
                 onSelected: (selected) {
                   onTypeSelected(selected ? type : null);
@@ -293,6 +309,7 @@ class _NoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = PrayerTranslations.of(appLang(context));
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
@@ -322,7 +339,7 @@ class _NoteCard extends StatelessWidget {
                     child: Text(
                       note.type == NoteType.autre && note.customTypeLabel != null
                           ? '✏️ ${note.customTypeLabel}'
-                          : note.type.displayNameFr,
+                          : (t.locale == 'en' ? note.type.displayNameEn : note.type.displayNameFr),
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -332,7 +349,7 @@ class _NoteCard extends StatelessWidget {
                   ),
                   const Spacer(),
                   Text(
-                    _formatDate(note.createdAt),
+                    _formatDate(t, note.createdAt),
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey[600],
@@ -343,14 +360,8 @@ class _NoteCard extends StatelessWidget {
 
               const SizedBox(height: 12),
 
-              // Contenu
-              Text(
-                note.content,
-                style: const TextStyle(
-                  fontSize: 15,
-                  height: 1.5,
-                ),
-              ),
+              // Contenu (✅ MODIFIÉ : tronqué à 3 lignes)
+              _TruncatedContent(text: note.content),
 
               // Verset
               if (note.verseReference != null) ...[
@@ -435,22 +446,75 @@ class _NoteCard extends StatelessWidget {
     }
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDate(PrayerTranslations t, DateTime date) {
     final now = DateTime.now();
     final diff = now.difference(date);
 
     if (diff.inMinutes < 1) {
-      return 'À l\'instant';
+      return t.justNow;
     } else if (diff.inMinutes < 60) {
-      return 'Il y a ${diff.inMinutes}min';
+      return t.minutesAgo(diff.inMinutes);
     } else if (diff.inHours < 24) {
-      return 'Il y a ${diff.inHours}h';
+      return t.hoursAgo(diff.inHours);
     } else if (diff.inDays == 1) {
-      return 'Hier';
+      return t.yesterday;
     } else if (diff.inDays < 7) {
-      return 'Il y a ${diff.inDays}j';
+      return t.daysAgo(diff.inDays);
     } else {
       return '${date.day}/${date.month}/${date.year}';
     }
+  }
+}
+
+// ✅ NOUVEAU : contenu limité à 3 lignes avec "Lire la suite"
+// (l'indicateur n'apparaît que si le texte est réellement coupé)
+class _TruncatedContent extends StatelessWidget {
+  final String text;
+  const _TruncatedContent({required this.text});
+
+  static const _maxLines = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = DefaultTextStyle.of(context)
+        .style
+        .merge(const TextStyle(fontSize: 15, height: 1.5));
+
+    final t = PrayerTranslations.of(appLang(context));
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Mesure si le texte dépasse 3 lignes
+        final painter = TextPainter(
+          text: TextSpan(text: text, style: style),
+          maxLines: _maxLines,
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+        )..layout(maxWidth: constraints.maxWidth);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              text,
+              style: style,
+              maxLines: _maxLines,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (painter.didExceedMaxLines)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  t.readMore,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
   }
 }

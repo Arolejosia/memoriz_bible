@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MemorizBible — Prière, méditation et mémorisation biblique</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,560;0,9..144,680;0,9..144,760;1,9..144,500&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink: #0e1226;
+      --ink-soft: #171c38;
+      --ink-softer: #212748;
+      --parchment: #f3ecdc;
+      --parchment-dim: #cfc7b3;
+      --gold: #e8b34c;
+      --gold-bright: #f3c669;
+      --burgundy: #a3455a;
+      --sage: #74a17d;
+      --muted: #9aa0c0;
+      --line: rgba(243,236,220,0.12);
+    }
+
+    *{ box-sizing:border-box; }
+    html{ scroll-behavior:smooth; }
+
+    body{
+      margin:0;
+      background:var(--ink);
+      color:var(--parchment);
+      font-family:'Inter', sans-serif;
+      -webkit-font-smoothing:antialiased;
+      overflow-x:hidden;
+    }
+
+    h1,h2,h3{
+      font-family:'Fraunces', serif;
+      margin:0;
+      letter-spacing:-0.01em;
+    }
+
+    .eyebrow{
+      font-family:'IBM Plex Mono', monospace;
+      font-size:12px;
+      letter-spacing:0.16em;
+      text-transform:uppercase;
+      color:var(--gold-bright);
+      font-weight:600;
+    }
+
+    a{ color:inherit; }
+
+    .wrap{
+      max-width:1160px;
+      margin:0 auto;
+      padding:0 32px;
+    }
+
+    /* ---------- NAV ---------- */
+    nav{
+      position:sticky;
+      top:0;
+      z-index:50;
+      backdrop-filter: blur(10px);
+      background:rgba(14,18,38,0.75);
+      border-bottom:1px solid var(--line);
+    }
+    nav .wrap{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      height:72px;
+    }
+    .logo{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-family:'Fraunces', serif;
+      font-weight:680;
+      font-size:19px;
+    }
+    .logo img{ width:30px; height:30px; border-radius:8px; }
+    .logo-mark{
+      width:30px; height:30px;
+      border-radius:8px;
+      background:linear-gradient(155deg, var(--gold) 0%, var(--burgundy) 100%);
+      display:flex; align-items:center; justify-content:center;
+      font-family:'Fraunces', serif;
+      font-weight:680;
+      font-size:16px;
+      color:var(--ink);
+    }
+    .nav-cta{
+      font-family:'IBM Plex Mono', monospace;
+      font-size:13px;
+      font-weight:600;
+      letter-spacing:0.04em;
+      padding:10px 18px;
+      border-radius:999px;
+      border:1px solid var(--gold);
+      color:var(--gold-bright);
+      text-decoration:none;
+      transition:background 0.2s ease, color 0.2s ease;
+      white-space:nowrap;
+    }
+    .nav-cta:hover{ background:var(--gold); color:var(--ink); }
+
+    /* ---------- HERO — reprend fidèlement le visuel promo existant ---------- */
+    .hero{
+      padding:90px 0 76px;
+      position:relative;
+    }
+    .hero::before{
+      content:"";
+      position:absolute;
+      top:-10%; right:-8%;
+      width:50%; height:80%;
+      background:radial-gradient(circle, rgba(232,179,76,0.14), transparent 65%);
+      pointer-events:none;
+    }
+    .hero-grid{
+      display:grid;
+      grid-template-columns: 340px 1fr;
+      gap:56px;
+      align-items:start;
+      position:relative;
+    }
+    .app-icon{
+      width:100%;
+      max-width:300px;
+      aspect-ratio:1/1;
+      border-radius:26%;
+      box-shadow:0 30px 60px -20px rgba(0,0,0,0.55);
+      display:block;
+      margin-bottom:26px;
+    }
+    .brand-name{
+      font-family:'Fraunces', serif;
+      font-weight:760;
+      font-size:34px;
+      color:var(--parchment);
+      display:inline-block;
+      padding-bottom:10px;
+      border-bottom:4px solid var(--gold);
+    }
+
+    .hero h1{
+      font-size:clamp(32px, 4.2vw, 48px);
+      line-height:1.18;
+      color:var(--parchment);
+      font-weight:680;
+      margin-bottom:38px;
+    }
+    .hero h1 .accent{ color:var(--gold-bright); }
+
+    .feature-row{
+      display:flex;
+      align-items:center;
+      gap:0;
+      margin-bottom:40px;
+      flex-wrap:wrap;
+    }
+    .feature-item{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      padding:0 28px;
+      border-right:1px solid var(--line);
+    }
+    .feature-item:first-child{ padding-left:0; }
+    .feature-item:last-child{ border-right:none; }
+    .feature-icon{
+      width:52px; height:52px;
+      border-radius:50%;
+      border:2px solid var(--gold);
+      display:flex; align-items:center; justify-content:center;
+      color:var(--gold-bright);
+      flex-shrink:0;
+    }
+    .feature-item span{
+      font-family:'Inter', sans-serif;
+      font-weight:700;
+      font-size:15px;
+      letter-spacing:0.04em;
+      color:var(--parchment);
+    }
+
+    .dl-label{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-family:'IBM Plex Mono', monospace;
+      font-weight:600;
+      font-size:14px;
+      letter-spacing:0.08em;
+      color:var(--gold-bright);
+      margin-bottom:18px;
+    }
+    .dl-label .arrow-circle{
+      width:26px; height:26px;
+      border-radius:50%;
+      border:1.5px solid var(--gold);
+      display:flex; align-items:center; justify-content:center;
+    }
+
+    .store-row{
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+      scroll-margin-top:96px; /* évite que la nav sticky cache l'ancre #telecharger */
+    }
+
+    /* Rangée de téléchargement compacte, visible uniquement sur mobile,
+       juste au-dessus du titre, pour un accès immédiat sans scroller. */
+    .store-row-mobile{ display:none; }
+    @media (max-width: 860px){
+      .store-row-mobile{
+        display:flex;
+        gap:10px;
+        margin-bottom:24px;
+        flex-wrap:wrap;
+      }
+      .store-row-mobile .badge{ padding:7px 14px 7px 10px; }
+      .store-row-mobile .badge svg{ width:20px; height:20px; }
+      .store-row-mobile .badge .txt small{ font-size:9px; }
+      .store-row-mobile .badge .txt strong{ font-size:13px; }
+    }
+    .badge{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      background:#000;
+      border:1px solid rgba(255,255,255,0.18);
+      border-radius:12px;
+      padding:9px 18px 9px 14px;
+      text-decoration:none;
+      transition:transform 0.18s ease;
+    }
+    .badge:hover{ transform:translateY(-2px); }
+    .badge svg{ width:26px; height:26px; flex-shrink:0; }
+    .badge .txt small{
+      display:block;
+      font-size:10px;
+      color:#fff;
+      opacity:0.85;
+      font-weight:500;
+      letter-spacing:0.02em;
+    }
+    .badge .txt strong{
+      display:block;
+      font-size:16px;
+      color:#fff;
+      font-weight:700;
+      line-height:1.15;
+      margin-top:1px;
+    }
+
+    /* ---------- VERSE ASSEMBLY DEMO ---------- */
+    .demo{
+      padding:76px 0;
+      border-top:1px solid var(--line);
+    }
+    .demo-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:56px;
+      align-items:center;
+    }
+    .demo h2{
+      font-size:clamp(26px, 3.2vw, 34px);
+      margin:14px 0 16px;
+      color:var(--parchment);
+    }
+    .demo p{
+      color:var(--muted);
+      line-height:1.65;
+      font-size:15px;
+      max-width:440px;
+    }
+    .verse-panel{
+      background:linear-gradient(165deg, var(--ink-soft), var(--ink-softer));
+      border:1px solid var(--line);
+      border-radius:22px;
+      padding:40px 34px;
+      min-height:240px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      position:relative;
+      overflow:hidden;
+    }
+    .verse-panel::before{
+      content:"";
+      position:absolute;
+      top:-40%; right:-20%;
+      width:60%; height:160%;
+      background:radial-gradient(circle, rgba(232,179,76,0.16), transparent 65%);
+      pointer-events:none;
+    }
+    .verse-label{
+      font-family:'IBM Plex Mono', monospace;
+      font-size:11px;
+      letter-spacing:0.14em;
+      text-transform:uppercase;
+      color:var(--muted);
+      margin-bottom:20px;
+    }
+    #verse-chips{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px 10px;
+      font-family:'Fraunces', serif;
+      font-size:21px;
+      font-weight:500;
+      line-height:1.5;
+      min-height:100px;
+    }
+    #verse-chips span{
+      display:inline-block;
+      opacity:0;
+      transform:translate(var(--dx,0), var(--dy,0)) rotate(var(--rot,0deg));
+      transition:transform 0.6s cubic-bezier(.2,.8,.2,1), opacity 0.5s ease;
+      color:var(--parchment);
+    }
+    #verse-chips span.settled{ opacity:1; transform:translate(0,0) rotate(0deg); }
+    .verse-ref{
+      margin-top:18px;
+      font-family:'IBM Plex Mono', monospace;
+      font-size:13px;
+      color:var(--gold-bright);
+      opacity:0;
+      transition:opacity 0.6s ease;
+    }
+    .verse-ref.show{ opacity:1; }
+
+    @media (prefers-reduced-motion: reduce){
+      #verse-chips span{ transition:none; opacity:1; transform:none; }
+      .verse-ref{ transition:none; opacity:1; }
+    }
+
+    /* ---------- PILLARS DETAIL ---------- */
+    .pillars{
+      padding:76px 0;
+      border-top:1px solid var(--line);
+    }
+    .section-head{ max-width:580px; margin-bottom:48px; }
+    .section-head h2{
+      font-size:clamp(26px, 3.2vw, 34px);
+      margin-top:14px;
+      color:var(--parchment);
+    }
+    .pillar-grid{
+      display:grid;
+      grid-template-columns:repeat(3, 1fr);
+      gap:22px;
+    }
+    .pillar{
+      background:var(--ink-soft);
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:28px 24px;
+      transition:transform 0.2s ease;
+    }
+    .pillar:hover{ transform:translateY(-4px); }
+    .pillar .picon{
+      width:44px; height:44px;
+      border-radius:50%;
+      border:1.5px solid;
+      display:flex; align-items:center; justify-content:center;
+      margin-bottom:16px;
+    }
+    .pillar.prie .picon{ border-color:var(--gold); color:var(--gold-bright); }
+    .pillar.medite .picon{ border-color:var(--sage); color:#9fcfa7; }
+    .pillar.memorise .picon{ border-color:var(--burgundy); color:#e2909f; }
+    .pillar h3{ font-size:19px; margin-bottom:8px; color:var(--parchment); }
+    .pillar p{ font-size:14px; line-height:1.6; color:var(--muted); margin:0; }
+
+    /* ---------- FLOW ---------- */
+    .flow{ padding:76px 0; border-top:1px solid var(--line); }
+    .flow-track{
+      display:flex; align-items:stretch;
+      overflow-x:auto; padding-bottom:8px; margin:0 -4px;
+    }
+    .flow-step{
+      flex:1 0 150px; display:flex; flex-direction:column;
+      align-items:center; text-align:center; padding:0 14px;
+    }
+    .flow-step .num{
+      font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink);
+      background:var(--gold); width:26px; height:26px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center; font-weight:700; margin-bottom:14px;
+    }
+    .flow-step h4{ font-size:14.5px; font-weight:600; color:var(--parchment); margin:0 0 6px; }
+    .flow-step p{ font-size:12.5px; color:var(--muted); line-height:1.5; margin:0; }
+    .flow-arrow{ display:flex; align-items:center; padding-top:13px; color:var(--parchment-dim); flex:0 0 auto; }
+
+    /* ---------- FINAL CTA ---------- */
+    .final-cta{
+      padding:90px 0 100px; text-align:center; border-top:1px solid var(--line);
+      background:radial-gradient(ellipse at 50% 0%, rgba(232,179,76,0.08), transparent 60%);
+    }
+    .final-cta h2{ font-size:clamp(28px, 4vw, 40px); max-width:640px; margin:16px auto 30px; color:var(--parchment); }
+    .final-cta .store-row{ justify-content:center; }
+    .langs{ margin-top:26px; font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--muted); letter-spacing:0.06em; }
+
+    footer{ border-top:1px solid var(--line); padding:32px 0; font-size:13px; color:var(--muted); }
+    footer .wrap{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+    footer a{ text-decoration:none; color:var(--muted); }
+    footer a:hover{ color:var(--parchment); }
+
+    @media (max-width: 860px){
+      .hero-grid{ grid-template-columns:1fr; }
+      .app-icon{ max-width:180px; }
+      .demo-grid{ grid-template-columns:1fr; gap:36px; }
+      .pillar-grid{ grid-template-columns:1fr; }
+      .flow-track{ flex-wrap:wrap; }
+      .flow-arrow{ display:none; }
+      .flow-step{ flex:1 1 45%; margin-bottom:20px; }
+      .feature-item{ border-right:none; padding:0; margin-right:24px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="logo">
+      <div class="logo-mark">M</div>
+      MemorizBible
+    </div>
+    <a class="nav-cta" href="#telecharger">Télécharger</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div><span class="brand-name">MemorizBible</span></div>
+    </div>
+
+    <div>
+      <div class="store-row-mobile">
+        <a class="badge" href="https://play.google.com/store/apps/details?id=com.ulrich_josia.memoriz_bible" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24"><path fill="#00d4ff" d="M3.6 2.4c-.4.3-.6.8-.6 1.4v16.4c0 .6.2 1.1.6 1.4l.1.1L13 12.4v-.2L3.7 2.3z"/><path fill="#00f076" d="M16.2 8.4L13 12.2l3.2 3.4 3.6-2.1c1-.6 1-1.6 0-2.2z"/><path fill="#ff3a44" d="M16.2 15.6L13 12.2 3.7 21.7c.4.4 1 .5 1.7.1z"/><path fill="#ffcf00" d="M16.2 8.4L5.4 2.2c-.7-.4-1.3-.3-1.7.1L13 12.2z"/></svg>
+          <span class="txt"><small>DISPONIBLE SUR</small><strong>Google Play</strong></span>
+        </a>
+        <a class="badge" href="https://apps.apple.com/ca/app/memorizbible/id6755869408?l=fr-CA" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="#fff"><path d="M16.365 1.43c0 1.14-.417 2.11-1.25 2.91-.855.81-1.9 1.28-2.96 1.19-.13-1.09.4-2.22 1.24-3.01.83-.78 2.11-1.31 2.97-1.09zM20.5 17.14c-.53 1.22-.78 1.76-1.46 2.83-.95 1.48-2.29 3.33-3.95 3.35-1.48.01-1.86-.97-3.87-.96-2.01.01-2.44.98-3.92.97-1.66-.02-2.93-1.68-3.88-3.16-2.67-4.11-2.95-8.94-1.3-11.51 1.17-1.83 3-2.91 4.71-2.91 1.75 0 2.86 1.01 4.31 1.01 1.4 0 2.27-1.01 4.31-1.01 1.53 0 3.14.83 4.29 2.27-3.78 2.07-3.16 7.46.76 9.12z"/></svg>
+          <span class="txt"><small>Télécharger dans</small><strong>l'App Store</strong></span>
+        </a>
+      </div>
+
+      <h1>La première application dédiée à la <span class="accent">prière</span>, à la <span class="accent">méditation</span> et à la <span class="accent">mémorisation</span> biblique.</h1>
+
+      <div class="feature-row">
+        <div class="feature-item">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v6.5"/>
+              <path d="M12 9.5c-1.2 3-3.4 5-6.5 6 1 3.2 3.6 5.5 6.5 5.5s5.5-2.3 6.5-5.5c-3.1-1-5.3-3-6.5-6z"/>
+              <path d="M8 7.5c0-2 1.8-3.5 4-3.5s4 1.5 4 3.5"/>
+            </svg>
+          </div>
+          <span>PRIE</span>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 5.5c2.2-1 5-1 8 .5 3-1.5 5.8-1.5 8-.5v13c-2.2-1-5-1-8 .5-3-1.5-5.8-1.5-8-.5z"/>
+              <path d="M12 6v13"/>
+            </svg>
+          </div>
+          <span>MÉDITE</span>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 4a3 3 0 0 0-3 3v.3A3 3 0 0 0 4 10v1a3 3 0 0 0 1 2.2A3 3 0 0 0 6 19a3 3 0 0 0 3 2h.5V4z"/>
+              <path d="M15 4a3 3 0 0 1 3 3v.3A3 3 0 0 1 20 10v1a3 3 0 0 1-1 2.2A3 3 0 0 1 18 19a3 3 0 0 1-3 2h-.5V4z"/>
+            </svg>
+          </div>
+          <span>MÉMORISE</span>
+        </div>
+      </div>
+
+      <div class="dl-label">
+        <span class="arrow-circle">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16M6 14l6 6 6-6"/></svg>
+        </span>
+        TÉLÉCHARGEMENT LIBRE
+      </div>
+
+      <div class="store-row" id="telecharger">
+        <a class="badge" href="https://play.google.com/store/apps/details?id=com.ulrich_josia.memoriz_bible" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24"><path fill="#00d4ff" d="M3.6 2.4c-.4.3-.6.8-.6 1.4v16.4c0 .6.2 1.1.6 1.4l.1.1L13 12.4v-.2L3.7 2.3z"/><path fill="#00f076" d="M16.2 8.4L13 12.2l3.2 3.4 3.6-2.1c1-.6 1-1.6 0-2.2z"/><path fill="#ff3a44" d="M16.2 15.6L13 12.2 3.7 21.7c.4.4 1 .5 1.7.1z"/><path fill="#ffcf00" d="M16.2 8.4L5.4 2.2c-.7-.4-1.3-.3-1.7.1L13 12.2z"/></svg>
+          <span class="txt"><small>DISPONIBLE SUR</small><strong>Google Play</strong></span>
+        </a>
+        <a class="badge" href="https://apps.apple.com/ca/app/memorizbible/id6755869408?l=fr-CA" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="#fff"><path d="M16.365 1.43c0 1.14-.417 2.11-1.25 2.91-.855.81-1.9 1.28-2.96 1.19-.13-1.09.4-2.22 1.24-3.01.83-.78 2.11-1.31 2.97-1.09zM20.5 17.14c-.53 1.22-.78 1.76-1.46 2.83-.95 1.48-2.29 3.33-3.95 3.35-1.48.01-1.86-.97-3.87-.96-2.01.01-2.44.98-3.92.97-1.66-.02-2.93-1.68-3.88-3.16-2.67-4.11-2.95-8.94-1.3-11.51 1.17-1.83 3-2.91 4.71-2.91 1.75 0 2.86 1.01 4.31 1.01 1.4 0 2.27-1.01 4.31-1.01 1.53 0 3.14.83 4.29 2.27-3.78 2.07-3.16 7.46.76 9.12z"/></svg>
+          <span class="txt"><small>Télécharger dans</small><strong>l'App Store</strong></span>
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="demo">
+  <div class="wrap demo-grid">
+    <div>
+      <div class="eyebrow">Voir la mémorisation en action</div>
+      <h2>Chaque verset se reconstruit, mot après mot.</h2>
+      <p>Le jeu « Ordre » — l'une des cinq étapes du parcours de mémorisation — reprend chaque mot du verset et vous demande de le remettre à sa place. C'est exactement ce que fait cette démonstration, avec le verset du jour.</p>
+    </div>
+    <div class="verse-panel">
+      <div class="verse-label">Verset du jour · reconstitué en direct</div>
+      <div id="verse-chips"></div>
+      <div class="verse-ref" id="verse-ref">— Psaume 119:105</div>
+    </div>
+  </div>
+</section>
+
+<section class="pillars">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Trois piliers</div>
+      <h2>Prier, méditer, mémoriser — sans changer d'application.</h2>
+    </div>
+    <div class="pillar-grid">
+      <div class="pillar prie">
+        <div class="picon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v6.5"/><path d="M12 9.5c-1.2 3-3.4 5-6.5 6 1 3.2 3.6 5.5 6.5 5.5s5.5-2.3 6.5-5.5c-3.1-1-5.3-3-6.5-6z"/></svg>
+        </div>
+        <h3>Un temps de prière suivi</h3>
+        <p>Chronométrez vos sessions de prière, cumulez votre temps quotidien et gardez vos séries de régularité jour après jour.</p>
+      </div>
+      <div class="pillar medite">
+        <div class="picon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5c2.2-1 5-1 8 .5 3-1.5 5.8-1.5 8-.5v13c-2.2-1-5-1-8 .5-3-1.5-5.8-1.5-8-.5z"/></svg>
+        </div>
+        <h3>Lire et méditer la Bible</h3>
+        <p>Parcourez les 66 livres chapitre par chapitre, sélectionnez un passage, et notez vos intentions, gratitudes et révélations.</p>
+      </div>
+      <div class="pillar memorise">
+        <div class="picon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4a3 3 0 0 0-3 3v.3A3 3 0 0 0 4 10v1a3 3 0 0 0 1 2.2A3 3 0 0 0 6 19a3 3 0 0 0 3 2h.5V4z"/></svg>
+        </div>
+        <h3>Mémoriser en jouant</h3>
+        <p>Un parcours en cinq étapes — QCM, texte à trous, ordre, dictée, récitation — pour ancrer durablement chaque verset.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="flow">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Le parcours de mémorisation</div>
+      <h2>Cinq étapes, dans cet ordre précis.</h2>
+    </div>
+    <div class="flow-track">
+      <div class="flow-step"><div class="num">1</div><h4>QCM</h4><p>Reconnaître le verset parmi plusieurs choix</p></div>
+      <div class="flow-arrow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="flow-step"><div class="num">2</div><h4>Texte à trous</h4><p>Compléter les mots manquants</p></div>
+      <div class="flow-arrow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="flow-step"><div class="num">3</div><h4>Ordre</h4><p>Remettre les mots dans le bon ordre</p></div>
+      <div class="flow-arrow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="flow-step"><div class="num">4</div><h4>Dictée</h4><p>Écrire le verset de mémoire</p></div>
+      <div class="flow-arrow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="flow-step"><div class="num">5</div><h4>Récitation</h4><p>Réciter à voix haute, vérifié par la voix</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="final-cta">
+  <div class="wrap">
+    <div class="eyebrow">Commencer aujourd'hui</div>
+    <h2>Votre premier verset vous attend.</h2>
+    <div class="store-row">
+      <a class="badge" href="https://play.google.com/store/apps/details?id=com.ulrich_josia.memoriz_bible" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path fill="#00d4ff" d="M3.6 2.4c-.4.3-.6.8-.6 1.4v16.4c0 .6.2 1.1.6 1.4l.1.1L13 12.4v-.2L3.7 2.3z"/><path fill="#00f076" d="M16.2 8.4L13 12.2l3.2 3.4 3.6-2.1c1-.6 1-1.6 0-2.2z"/><path fill="#ff3a44" d="M16.2 15.6L13 12.2 3.7 21.7c.4.4 1 .5 1.7.1z"/><path fill="#ffcf00" d="M16.2 8.4L5.4 2.2c-.7-.4-1.3-.3-1.7.1L13 12.2z"/></svg>
+        <span class="txt"><small>DISPONIBLE SUR</small><strong>Google Play</strong></span>
+      </a>
+      <a class="badge" href="https://apps.apple.com/ca/app/memorizbible/id6755869408?l=fr-CA" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="#fff"><path d="M16.365 1.43c0 1.14-.417 2.11-1.25 2.91-.855.81-1.9 1.28-2.96 1.19-.13-1.09.4-2.22 1.24-3.01.83-.78 2.11-1.31 2.97-1.09zM20.5 17.14c-.53 1.22-.78 1.76-1.46 2.83-.95 1.48-2.29 3.33-3.95 3.35-1.48.01-1.86-.97-3.87-.96-2.01.01-2.44.98-3.92.97-1.66-.02-2.93-1.68-3.88-3.16-2.67-4.11-2.95-8.94-1.3-11.51 1.17-1.83 3-2.91 4.71-2.91 1.75 0 2.86 1.01 4.31 1.01 1.4 0 2.27-1.01 4.31-1.01 1.53 0 3.14.83 4.29 2.27-3.78 2.07-3.16 7.46.76 9.12z"/></svg>
+        <span class="txt"><small>Télécharger dans</small><strong>l'App Store</strong></span>
+      </a>
+    </div>
+    <div class="langs">Disponible en français et en anglais</div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 MemorizBible — Ulrich Lele &amp; Josia Arole Damgne</span>
+    <a href="https://memorizbible.web.app/support">Support</a>
+  </div>
+</footer>
+
+<script>
+  const verseText = "Ta parole est une lampe à mes pieds et une lumière sur mon sentier.";
+  const container = document.getElementById('verse-chips');
+  const ref = document.getElementById('verse-ref');
+  const words = verseText.split(' ');
+
+  words.forEach((word, i) => {
+    const span = document.createElement('span');
+    span.textContent = word + (i < words.length - 1 ? '\u00A0' : '');
+    const dx = (Math.random() * 160 - 80).toFixed(0) + 'px';
+    const dy = (Math.random() * 80 - 40).toFixed(0) + 'px';
+    const rot = (Math.random() * 30 - 15).toFixed(0) + 'deg';
+    span.style.setProperty('--dx', dx);
+    span.style.setProperty('--dy', dy);
+    span.style.setProperty('--rot', rot);
+    span.style.transitionDelay = (i * 90) + 'ms';
+    container.appendChild(span);
+  });
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if(entry.isIntersecting){
+        container.querySelectorAll('span').forEach(s => s.classList.add('settled'));
+        setTimeout(() => ref.classList.add('show'), words.length * 90 + 400);
+        io.disconnect();
+      }
+    });
+  }, {threshold: 0.4});
+  io.observe(container);
+</script>
+
+</body>
+</html>

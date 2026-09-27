@@ -1,5 +1,6 @@
 // Fichier: screens/core/bible_reader_page.dart
 // 📖 Écran de lecture de la Bible : livre → chapitre → versets
+// ✅ AJOUTÉ : bouton « Partager » dans la barre de sélection des versets
 //
 // ⚠️ NOTE : structure Material standard, à ajuster une fois qu'on aura
 // vu un écran existant de l'app pour matcher le thème (couleurs, AppBar, etc.)
@@ -19,6 +20,8 @@ import 'pageDeConfiguration.dart';
 import '../../models/verse_model.dart';
 // ⚠️ Chemin à confirmer si erreur : écran de détail/progression réelle
 import '../verse/verse_detail_page.dart';
+// ✅ NOUVEAU : feuille de partage (image statut/story/carré ou texte)
+import '../../widgets/share_verse_sheet.dart';
 
 class BibleReaderPage extends StatefulWidget {
   const BibleReaderPage({super.key});
@@ -694,7 +697,7 @@ class _BibleReaderPageState extends State<BibleReaderPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
 
-              // Nombre de versets sélectionnés + fermeture
+              // Nombre de versets sélectionnés + Partager + fermeture
               Row(
                 children: [
                   Expanded(
@@ -712,6 +715,19 @@ class _BibleReaderPageState extends State<BibleReaderPage> {
                       ),
                     ),
                   ),
+
+                  // ✅ NOUVEAU : partager la sélection (image ou texte)
+                  TextButton.icon(
+                    onPressed: () => _partagerSelection(versetsChoisis),
+                    icon: const Icon(Icons.ios_share, size: 18),
+                    label: Text(_language == 'fr' ? 'Partager' : 'Share'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.indigo,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+
+                  const SizedBox(width: 4),
 
                   IconButton(
                     tooltip: _language == 'fr' ? 'Annuler' : 'Cancel',
@@ -844,6 +860,22 @@ class _BibleReaderPageState extends State<BibleReaderPage> {
     return premierNumero == dernierNumero
         ? '$livre $chapitre:$premierNumero'
         : '$livre $chapitre:$premierNumero-$dernierNumero';
+  }
+
+  // ✅ NOUVEAU : ouvre la feuille de partage avec les versets sélectionnés.
+  // Le texte est déjà chargé (c'est celui affiché à l'écran), donc aucun
+  // appel réseau supplémentaire.
+  Future<void> _partagerSelection(List<VerseData> versets) async {
+    if (versets.isEmpty) return;
+    final referenceComplete = _construireReferenceComplete(versets);
+    final texte = versets.map((v) => v.text.trim()).join(' ');
+
+    await showShareVerseSheet(
+      context,
+      reference: referenceComplete,
+      text: texte,
+      language: _language,
+    );
   }
 
   // Note importante : on utilise volontairement le mode sandbox ici.

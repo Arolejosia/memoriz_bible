@@ -28,5 +28,7 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	  <key>NSPhotoLibraryAddUsageDescription</key>
+      <string>MemorizBible enregistre les images de versets dans vos photos.</string>
 </dict>
 </plist>

@@ -1,4 +1,5 @@
 // fichier: lib/widgets/main_drawer.dart
+// ✅ AJOUTÉ : entrée « Méditation » juste sous « Bible »
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -14,6 +15,8 @@ import '../screens/duels/multiplayer_hub_page.dart';
 import '../screens/games/trouver_reference_config_page.dart';
 import '../screens/groups/create_group_page.dart';
 import '../screens/groups/groups_list_page.dart';
+// ✅ NOUVEAU : écran d'accueil de la méditation
+import '../prayer/screens/prayer_home_screen.dart';
 import 'package:provider/provider.dart';
 import '../models/language_provider.dart';
 
@@ -76,6 +79,19 @@ class _MainDrawerState extends State<MainDrawer> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const BibleReaderPage()),
+              );
+            },
+          ),
+
+          // ✅ NOUVEAU : Méditation (lire → méditer, les deux vont ensemble)
+          ListTile(
+            leading: const Icon(Icons.self_improvement, color: Color(0xFF1F5C57)),
+            title: Text(t('meditation')),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const PrayerHomeScreen()),
               );
             },
           ),
@@ -222,6 +238,7 @@ class DrawerTranslations {
       'title': {'fr': 'MemorizBible', 'en': 'MemorizBible'},
       'home': {'fr': 'Accueil', 'en': 'Home'},
       'bible': {'fr': 'Bible', 'en': 'Bible'},
+      'meditation': {'fr': 'Méditation', 'en': 'Meditation'}, // ✅ NOUVEAU
       'library': {'fr': 'Bibliothèque', 'en': 'Library'},
       'profile': {'fr': 'Profil & Progrès', 'en': 'Profile & Progress'},
       'my_groups': {'fr': 'Mes Groupes', 'en': 'My Groups'},

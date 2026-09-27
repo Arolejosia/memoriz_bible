@@ -8,6 +8,10 @@ import 'package:provider/provider.dart';
 import '../../models/language_provider.dart';
 import '../core/home_page.dart';
 
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+
 
 /// Translations for email verification page
 /// Traductions pour la page de vérification d'email
@@ -23,6 +27,7 @@ class VerifyEmailTranslations {
         'fr': 'Veuillez cliquer sur le lien dans l\'email pour activer votre compte.',
         'en': 'Please click the link in the email to activate your account.'
       },
+      'invalid_credentials': {'fr': 'Email ou mot de passe incorrect.', 'en': 'Incorrect email or password.'},
       'resend_email': {'fr': 'Renvoyer l\'email', 'en': 'Resend email'},
       'resend_in': {'fr': 'Renvoyer dans', 'en': 'Resend in'},
       'seconds': {'fr': 's', 'en': 's'},
@@ -183,13 +188,32 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
     }
   }
 
+
+
+// Remplace entièrement la méthode _resendVerificationEmail par :
+
   Future<void> _resendVerificationEmail() async {
     if (_countdown > 0 || _isResending) return;
 
     setState(() => _isResending = true);
 
     try {
-      await FirebaseAuth.instance.currentUser!.sendEmailVerification();
+      final user = FirebaseAuth.instance.currentUser!;
+      final lang = context.read<LanguageProvider>().language; // "fr" ou "en"
+
+      final response = await http.post(
+        Uri.parse('https://memoriz-bible-api.onrender.com/api/send-verification-email'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': user.email,
+          'display_name': user.displayName ?? '',
+          'lang': lang,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Server error: ${response.statusCode} ${response.body}');
+      }
 
       setState(() {
         _isResending = false;
@@ -227,15 +251,9 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
       setState(() => _isResending = false);
 
       if (mounted) {
-        String errorMessage = t('error_resend');
-
-        if (e.toString().contains('too-many-requests')) {
-          errorMessage = t('too_many_requests');
-        }
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ $errorMessage'),
+            content: Text('❌ ${t('error_resend')}'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
